@@ -1,0 +1,4 @@
+*.ini
+*/*.ini
+@Examples - ENBSeries/*
+@Examples - Reshade/*
