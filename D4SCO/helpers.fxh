@@ -22,6 +22,13 @@ float random(in float2 uv)
 ////////// COLOR OPERATORS
 
 
+// Miscellaneous operators
+float3 gamma(float3 color, float g)
+{
+  return pow(color.rgb, g);
+}
+
+
 // Exponential luma compression
 float lcompress(float x)
 {

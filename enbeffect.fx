@@ -75,6 +75,7 @@ UI_BOOL(PARAM_TONEMAP_ENABLE, "Use Frostbyte Tonemap ?", false)
 UI_FLOAT(PARAM_TONEMAP_DESAT_TRESHOLD, "Desaturation Treshold", 0.0, 1.0, 0.25)
 UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "Hue-Shift Multiplier", 0.0, 1.0, 0.6)
 UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "Saturation Multiplier", 0.0, 1.0, 0.3)
+UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "Gamma Factor", 1.0, 3.0, 2.2)
 
 ////////// EXTERNAL ENB DEBUGGING PARAMETERS
 // Keyboard controlled temporary variables
@@ -160,8 +161,7 @@ float3 applyFrostbyteDisplayMapper(float3 color)
 	color = ictcp2rgb(ictcp * float3(1, saturation.xx));
 
 	// Luminance compression treshold, dimmer inputs are not affected
-	// TODO Parametize 0.25 as the desaturation treshold
-	float treshold = 0.25;
+	float treshold = PARAM_TONEMAP_DESAT_TRESHOLD;
 
 	// Hue-preserving remapping
 	float mcolor = max(color.r, max(color.g, color.b));
@@ -172,14 +172,12 @@ float3 applyFrostbyteDisplayMapper(float3 color)
 	float3 nhpcolor = lcompress(color, treshold);
 
 	// Mixing hue-preserving color with normal compressed one
-	// TODO Parametize 0.6 as the hue-shifting value
-	color = lerp(nhpcolor, hpcolor, 0.6);
+	color = lerp(nhpcolor, hpcolor, PARAM_TONEMAP_HS_MULTIPLIER);
 
 	float3 mictcp = rgb2ictcp(color);
 
 	// Smooth ramp-up of the saturation at higher brightness
-	// TODO Parametize 0.3 as the saturation multiplier
-	float boost = 0.3 * smoothstep(1.0, 0.5, ictcp.x);
+	float boost = PARAM_TONEMAP_SAT_MULTIPLIER * smoothstep(1.0, 0.5, ictcp.x);
 
 	// Re-introduce some hue from the original color, using previous boost
 	mictcp.yz = lerp(mictcp.yz, ictcp.yz * mictcp.x / max(0.001, ictcp.x), boost);
@@ -241,6 +239,7 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 
 	color.rgb = ncoeff.rgb * ncolor.rgb;
 	if (PARAM_TONEMAP_ENABLE) color.rgb = applyFrostbyteDisplayMapper(color.rgb);
+	color.rgb = gamma(color.rgb, PARAM_TONEMAP_GAMMA_FACTOR);
 	res.rgb = saturate(color).rgb;
 	res.a = 1.0;
 	return res;
