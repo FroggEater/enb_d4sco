@@ -75,7 +75,9 @@ UI_BOOL(PARAM_TONEMAP_ENABLE, "Use Frostbyte Tonemap ?", false)
 UI_FLOAT(PARAM_TONEMAP_DESAT_TRESHOLD, "Desaturation Treshold", 0.0, 1.0, 0.25)
 UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "Hue-Shift Multiplier", 0.0, 1.0, 0.6)
 UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "Saturation Multiplier", 0.0, 1.0, 0.3)
-UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "Gamma Factor", 1.0, 3.0, 2.2)
+UI_WHITESPACE(4)
+UI_BOOL(PARAM_TONEMAP_GAMMA_ENABLE, "Use Gamma Factor ?", false)
+UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "Gamma Factor", 0.0, 2.0, 1.0)
 
 ////////// EXTERNAL ENB DEBUGGING PARAMETERS
 // Keyboard controlled temporary variables
@@ -239,7 +241,7 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 
 	color.rgb = ncoeff.rgb * ncolor.rgb;
 	if (PARAM_TONEMAP_ENABLE) color.rgb = applyFrostbyteDisplayMapper(color.rgb);
-	color.rgb = gamma(color.rgb, PARAM_TONEMAP_GAMMA_FACTOR);
+	if (PARAM_TONEMAP_GAMMA_ENABLE) color.rgb = gamma(color.rgb, PARAM_TONEMAP_GAMMA_FACTOR);
 	res.rgb = saturate(color).rgb;
 	res.a = 1.0;
 	return res;
