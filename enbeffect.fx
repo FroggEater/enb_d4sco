@@ -194,6 +194,8 @@ struct VS_OUTPUT_POST
 float3 applyAGCC(float3 color)
 {
 	float grey = dot(color, LUM_709);
+
+	// Game parameters
 	float IS_SATURATION = clamp(Params01[3].x, PARAM_AGCC_SAT_MIN, PARAM_AGCC_SAT_MAX);
 	float IS_CONTRAST = clamp(Params01[3].z, PARAM_AGCC_CTR_MIN, PARAM_AGCC_CTR_MAX);
 	float IS_EXPOSURE = clamp(Params01[3].w, PARAM_AGCC_EXP_MIN, PARAM_AGCC_EXP_MAX);
@@ -213,6 +215,7 @@ float3 applyAGCC(float3 color)
 	color.rgb = log2(color.rgb * IS_EXPOSURE + DELTA6);
 	color.rgb = max(exp2(lerp(PARAM_AGCC_MIDDLE_GREY, color.rgb, IS_CONTRAST)) - DELTA6, 0.0);
 
+	// Return
 	return color.rgb;
 }
 
