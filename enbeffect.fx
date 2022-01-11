@@ -77,15 +77,15 @@ UI_SEPARATOR_CUSTOM("AGCC Settings :")
 
 UI_SPLITTER(3)
 UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
-UI_FLOAT(PARAM_AGCC_TINT_LIMIT, "1.00 | Game Tint (max)", 0.0, 10.0, 1.0)
-UI_FLOAT(PARAM_AGCC_FADE_LIMIT, "1.00 | Game Fade (max)", 0.0, 10.0, 1.0)
+UI_FLOAT(PARAM_AGCC_TINT_LIMIT, "1.00 | Game Tint (max)", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_FADE_LIMIT, "1.00 | Game Fade (max)", 0.0, 1.0, 1.0)
 UI_WHITESPACE(4)
-UI_FLOAT(PARAM_AGCC_EXP_MIN, "0.00 | Game Exposure (min)", 0.0, 5.0, 0.0)
-UI_FLOAT(PARAM_AGCC_EXP_MAX, "1.00 | Game Exposure (max)", 0.0, 5.0, 1.0)
-UI_FLOAT(PARAM_AGCC_CTR_MIN, "0.00 | Game Contrast (min)", 0.0, 5.0, 0.0)
-UI_FLOAT(PARAM_AGCC_CTR_MAX, "1.00 | Game Contrast (max)", 0.0, 5.0, 1.0)
-UI_FLOAT(PARAM_AGCC_SAT_MIN, "0.00 | Game Saturation (min)", 0.0, 5.0, 0.0)
-UI_FLOAT(PARAM_AGCC_SAT_MAX, "1.00 | Game Saturation (max)", 0.0, 5.0, 1.0)
+UI_FLOAT(PARAM_AGCC_EXP_MIN, "0.00 | Game Exposure (min)", 0.0, 1.0, 0.0)
+UI_FLOAT(PARAM_AGCC_EXP_MAX, "1.00 | Game Exposure (max)", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_CTR_MIN, "0.00 | Game Contrast (min)", 0.0, 1.0, 0.0)
+UI_FLOAT(PARAM_AGCC_CTR_MAX, "1.00 | Game Contrast (max)", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_SAT_MIN, "0.00 | Game Saturation (min)", 0.0, 1.0, 0.0)
+UI_FLOAT(PARAM_AGCC_SAT_MAX, "1.00 | Game Saturation (max)", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_MIDDLE_GREY, "0.50 | Middle Grey", 0.0, 1.0, 0.5)
 
 UI_WHITESPACE(5)
@@ -210,8 +210,8 @@ float3 applyAGCC(float3 color)
 	color.rgb = max(lerp(grey, color, IS_SATURATION), 0.0);
 
 	// Logarithmic contrast and exposure
-	color.rgb = log2(color.rgb * IS_EXPOSURE + DELTA);
-	color.rgb = max(exp2(lerp(PARAM_AGCC_MIDDLE_GREY, color.rgb, IS_CONTRAST)) - DELTA, 0.0);
+	color.rgb = log2(color.rgb * IS_EXPOSURE + DELTA6);
+	color.rgb = max(exp2(lerp(PARAM_AGCC_MIDDLE_GREY, color.rgb, IS_CONTRAST)) - DELTA6, 0.0);
 
 	return color.rgb;
 }
@@ -252,7 +252,7 @@ float3 applyFrostbyteDisplayMapper(float3 color)
 	float boost = PARAM_TONEMAP_SAT_MULTIPLIER * smoothstep(1.0, 0.5, ictcp.x);
 
 	// Re-introduce some hue from the original color, using previous boost
-	mictcp.yz = lerp(mictcp.yz, ictcp.yz * mictcp.x / max(0.001, ictcp.x), boost);
+	mictcp.yz = lerp(mictcp.yz, ictcp.yz * mictcp.x / max(DELTA3, ictcp.x), boost);
 
 	color = ictcp2rgb(mictcp);
 	return color;
