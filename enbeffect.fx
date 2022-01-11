@@ -189,21 +189,6 @@ SamplerState Sampler1
 
 
 
-////////// INPUT & OUTPUT STRUCTS
-struct VS_INPUT_POST
-{
-	float3 pos : POSITION;
-	float2 txcoord : TEXCOORD0;
-};
-
-struct VS_OUTPUT_POST
-{
-	float4 pos : SV_POSITION;
-	float2 txcoord0 : TEXCOORD0;
-};
-
-
-
 ////////// AGCC
 float3 applyAGCC(float3 color)
 {
@@ -278,8 +263,25 @@ float3 applyFrostbyteDisplayMapper(float3 color)
 
 
 
+////////// INPUT & OUTPUT STRUCTS
+// Input
+struct VS_INPUT_POST
+{
+	float3 pos : POSITION;
+	float2 txcoord : TEXCOORD0;
+};
+
+// Output
+struct VS_OUTPUT_POST
+{
+	float4 pos : SV_POSITION;
+	float2 txcoord0 : TEXCOORD0;
+};
+
+
+
 ////////// COMPUTE
-VS_OUTPUT_POST VS_Draw(VS_INPUT_POST IN)
+VS_OUTPUT_POST VS_D4Draw(VS_INPUT_POST IN)
 {
 	VS_OUTPUT_POST OUT;
 	float4 pos;
@@ -287,10 +289,12 @@ VS_OUTPUT_POST VS_Draw(VS_INPUT_POST IN)
 	pos.w = 1.0;
 	OUT.pos = pos;
 	OUT.txcoord0.xy = IN.txcoord.xy;
+
+	// Return
 	return OUT;
 }
 
-float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
+float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 {
 	float4 res;
 
@@ -415,8 +419,8 @@ technique11 Draw <string UIName="D4SCO - Effects";>
 {
 	pass p0
 	{
-		SetVertexShader(CompileShader(vs_5_0, VS_Draw()));
-		SetPixelShader(CompileShader(ps_5_0, PS_Draw()));
+		SetVertexShader(CompileShader(vs_5_0, VS_D4Draw()));
+		SetPixelShader(CompileShader(ps_5_0, PS_D4Draw()));
 	}
 }
 
@@ -426,7 +430,7 @@ technique11 Draw <string UIName="D4SCO - Effects";>
 // {
 // 	pass p0
 // 	{
-// 		SetVertexShader(CompileShader(vs_5_0, VS_Draw()));
+// 		SetVertexShader(CompileShader(vs_5_0, VS_D4Draw()));
 // 		SetPixelShader(CompileShader(ps_5_0, PS_DrawOriginal()));
 // 	}
 // }
