@@ -1,40 +1,49 @@
 ////////// D4SCO enbeffect.fx - 1.0
 ////////// Provided as is by FroggEater
-////////// with code/help from :
+////////// thanks to :
 //////////  - firemanaf (AGCC, tonemapping, effects)
 //////////  - The Sandvich Maker (UI macros, dithering, general understanding)
+//////////  - prod80 (contrast correction)
 //////////  - Boris Vorontsov (of course)
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates
 ////////// > visit the Nexus for D4SCO updates
 
+
+
 ////////// CONSTANTS & HANDLES
 #define remap(v, a, b) (((v) - (a)) / ((b) - (a)))
 #define LUM_709 float3(0.2125, 0.7154, 0.0721)
 
+
+
 ////////// EXTERNAL PARAMETERS
 //x = generic timer in range 0..1, period of 16777216 ms (4.6 hours), y = average fps, w = frame time elapsed (in seconds)
-float4	Timer;
+float4 Timer;
 //x = Width, y = 1/Width, z = aspect, w = 1/aspect, aspect is Width/Height
-float4	ScreenSize;
+float4 ScreenSize;
 //changes in range 0..1, 0 means full quality, 1 lowest dynamic quality (0.33, 0.66 are limits for quality levels)
 float	AdaptiveQuality;
 //x = current weather index, y = outgoing weather index, z = weather transition, w = time of the day in 24 standart hours. Weather index is value from weather ini file, for example WEATHER002 means index==2, but index==0 means that weather not captured.
-float4	Weather;
+float4 Weather;
 //x = dawn, y = sunrise, z = day, w = sunset. Interpolators range from 0..1
-float4	TimeOfDay1;
+float4 TimeOfDay1;
 //x = dusk, y = night. Interpolators range from 0..1
-float4	TimeOfDay2;
+float4 TimeOfDay2;
 //changes in range 0..1, 0 means that night time, 1 - day time
 float	ENightDayFactor;
 //changes 0 or 1. 0 means that exterior, 1 - interior
 float	EInteriorFactor;
 //x = Width, y = 1/Width, z = aspect, w = 1/aspect, aspect is Width/Height
-float4	BloomSize;
+float4 BloomSize;
+
+
 
 ////////// INCLUDES
 #include "D4SCO/ReforgedUI.fxh"
 #include "D4SCO/helpers.fxh"
+
+
 
 ////////// PARAMETERS
 #define UI_SEPARATOR_MODE COLON
@@ -45,10 +54,6 @@ float4	BloomSize;
 UI_MESSAGE(Credits0, "D4SCO")
 UI_MESSAGE(Credits1, "by FroggEater")
 UI_SPLITTER(1)
-UI_MESSAGE(Credits2, "with the help of...")
-UI_MESSAGE(Credits3, "firemanaf")
-UI_MESSAGE(Credits4, "The Sandvich Maker")
-UI_MESSAGE(Credits5, "boris")
 
 UI_WHITESPACE(1)
 
@@ -56,14 +61,14 @@ UI_WHITESPACE(1)
 UI_SEPARATOR_CUSTOM("Base Image Settings :")
 
 UI_SPLITTER(2)
-UI_FLOAT(PARAM_ADAPTATION_BORDER_MIN, "Adaptation (min)", 0.0, 100.0, 0.0)
-UI_FLOAT(PARAM_ADAPTATION_BORDER_MAX, "Adaptation (max)", 0.0, 100.0, 50.0)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "Adaptation Divider (min)", 0.0, 1.0, 0.5)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "Adaptation Divider (max)", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_ADAPTATION_BORDER_MIN, "[0.00] Adaptation (min)", 0.0, 100.0, 0.0)
+UI_FLOAT(PARAM_ADAPTATION_BORDER_MAX, "[50.0] Adaptation (max)", 0.0, 100.0, 50.0)
+UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "[0.50] Adaptation Divider (min)", 0.0, 1.0, 0.5)
+UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "[1.00] Adaptation Divider (max)", 0.0, 1.0, 1.0)
 UI_WHITESPACE(2)
-UI_FLOAT(PARAM_BASE_BRIGHTNESS, "Brightness", 0.0, 2.0, 1.0)
-UI_FLOAT(PARAM_BASE_CONTRAST, "Contrast", 0.0, 2.0, 1.0)
-UI_FLOAT(PARAM_BASE_SATURATION, "Saturation", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_BRIGHTNESS, "[1.00] Brightness", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_CONTRAST, "[1.00] Contrast", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_SATURATION, "[1.00] Saturation", 0.0, 2.0, 1.0)
 
 UI_WHITESPACE(3)
 
@@ -71,13 +76,19 @@ UI_WHITESPACE(3)
 UI_SEPARATOR_CUSTOM("Tonemap Settings :")
 
 UI_SPLITTER(3)
-UI_BOOL(PARAM_TONEMAP_ENABLE, "Use Frostbyte Tonemap ?", false)
-UI_FLOAT(PARAM_TONEMAP_DESAT_TRESHOLD, "Desaturation Treshold", 0.0, 1.0, 0.25)
-UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "Hue-Shift Multiplier", 0.0, 1.0, 0.6)
-UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "Saturation Multiplier", 0.0, 1.0, 0.3)
+UI_BOOL(PARAM_TONEMAP_PROCESS_ENABLE, "[ ] Use Frostbyte Tonemap Processing ?", false)
+UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "[0.25] Compression Lower Bound", 0.0, 1.0, 0.25)
+UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "[0.70] Desaturation Amount", 0.0, 1.0, 0.7)
+UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "[0.60] Hue-Shift Multiplier", 0.0, 1.0, 0.6)
+UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "[0.30] Saturation Multiplier", 0.0, 1.0, 0.3)
 UI_WHITESPACE(4)
-UI_BOOL(PARAM_TONEMAP_GAMMA_ENABLE, "Use Gamma Factor ?", false)
-UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "Gamma Factor", 0.0, 2.0, 1.0)
+UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "[ ] Use Secondary Tonemap ?", false)
+UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "[4.00] Whitepoint", 2.5, 7.5, 4.0)
+UI_WHITESPACE(5)
+UI_BOOL(PARAM_TONEMAP_GAMMA_ENABLE, "[ ] Use Gamma Factor ?", false)
+UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "[1.00] Gamma Factor", 0.0, 2.0, 1.0)
+
+
 
 ////////// EXTERNAL ENB DEBUGGING PARAMETERS
 // Keyboard controlled temporary variables
@@ -102,10 +113,14 @@ float4 tempInfo1;
 // zw = cursor position of previous right mouse button click
 float4 tempInfo2;
 
+
+
 ////////// GAME PARAMETERS
 float4 Params01[7]; // SSE parameters
 // x - bloom amount; y - lens amount
 float4 ENBParams01; // ENB parameters
+
+
 
 ////////// SOURCE TEXTURES
 Texture2D TextureColor; // HDR color, in multipass mode it's previous pass 32 bit LDR, except when temporary render targets are used
@@ -119,12 +134,12 @@ Texture2D TextureAperture; // This frame aperture 1*1 R32F HDR red channel only.
 // Textures of multipass techniques
 Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
 // Temporary render targets
-Texture2D RenderTargetRGBA32; // R8G8B8A8 32 bit LDR format
-Texture2D RenderTargetRGBA64; // R16B16G16A16 64 bit LDR format
-Texture2D RenderTargetRGBA64F; // R16B16G16A16F 64 bit HDR format
-Texture2D RenderTargetR16F; // R16F 16 bit HDR format with red channel only
-Texture2D RenderTargetR32F; // R32F 32 bit HDR format with red channel only
-Texture2D RenderTargetRGB32F; // 32 bit HDR format without alpha
+// Texture2D RenderTargetRGBA32; // R8G8B8A8 32 bit LDR format
+// Texture2D RenderTargetRGBA64; // R16B16G16A16 64 bit LDR format
+// Texture2D RenderTargetRGBA64F; // R16B16G16A16F 64 bit HDR format
+// Texture2D RenderTargetR16F; // R16F 16 bit HDR format with red channel only
+// Texture2D RenderTargetR32F; // R32F 32 bit HDR format with red channel only
+// Texture2D RenderTargetRGB32F; // 32 bit HDR format without alpha
 
 SamplerState Sampler0
 {
@@ -140,6 +155,8 @@ SamplerState Sampler1
 	AddressV = Clamp;
 };
 
+
+
 ////////// INPUT & OUTPUT
 struct VS_INPUT_POST
 {
@@ -153,25 +170,32 @@ struct VS_OUTPUT_POST
 	float2 txcoord0 : TEXCOORD0;
 };
 
+
+
 ////////// TONEMAPPING
+float3 applyTonemap(float3 color, float treshold)
+{
+	return lcompress(color.rgb, treshold) * rcp(lcompress(PARAM_TONEMAP_SECONDARY_WHITEPOINT, treshold));
+}
+
 float3 applyFrostbyteDisplayMapper(float3 color)
 {
 	float3 ictcp = rgb2ictcp(color);
 
 	// Desaturation before range compression
-	float saturation = pow(smoothstep(1.0, 0.3, ictcp.x), 1.3);
-	color = ictcp2rgb(ictcp * float3(1, saturation.xx));
+	float saturation = pow(smoothstep(1.0, 1.0 - PARAM_TONEMAP_DESAT_AMOUNT, ictcp.x), 1.3);
+	color.rgb = ictcp2rgb(ictcp * float3(1.0, saturation.xx));
 
 	// Luminance compression treshold, dimmer inputs are not affected
-	float treshold = PARAM_TONEMAP_DESAT_TRESHOLD;
+	float treshold = PARAM_TONEMAP_COMPRESSION_LBOUND;
 
 	// Hue-preserving remapping
-	float mcolor = max(color.r, max(color.g, color.b));
-	float mapped = lcompress(mcolor, treshold);
-	float3 hpcolor = color * mapped / mcolor;
+	float peak = max(color.r, max(color.g, color.b));
+	float mapped = PARAM_TONEMAP_SECONDARY_ENABLE ? applyTonemap(peak, treshold) : lcompress(peak, treshold);
+	float3 hpcolor = color * mapped / peak;
 
 	// Non hue-preserving remapping
-	float3 nhpcolor = lcompress(color, treshold);
+	float3 nhpcolor = PARAM_TONEMAP_SECONDARY_ENABLE ? applyTonemap(color, treshold) : lcompress(color, treshold);
 
 	// Mixing hue-preserving color with normal compressed one
 	color = lerp(nhpcolor, hpcolor, PARAM_TONEMAP_HS_MULTIPLIER);
@@ -187,6 +211,8 @@ float3 applyFrostbyteDisplayMapper(float3 color)
 	color = ictcp2rgb(mictcp);
 	return color;
 }
+
+
 
 ////////// COMPUTE
 VS_OUTPUT_POST VS_Draw(VS_INPUT_POST IN)
@@ -206,6 +232,7 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 
 	// Pixel coordinates and ENB parameters
 	float2 coords = IN.txcoord0.xy;
+	float3 pos = IN.pos.xyz;
 	float ENB_BLOOM_AMOUNT = ENBParams01.x;
 	float ENB_LENS_AMOUNT = ENBParams01.y;
 
@@ -240,12 +267,14 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	ncolor.rgb = pow(ncolor.rgb, PARAM_BASE_SATURATION);
 
 	color.rgb = ncoeff.rgb * ncolor.rgb;
-	if (PARAM_TONEMAP_ENABLE) color.rgb = applyFrostbyteDisplayMapper(color.rgb);
+	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbyteDisplayMapper(color.rgb);
 	if (PARAM_TONEMAP_GAMMA_ENABLE) color.rgb = gamma(color.rgb, PARAM_TONEMAP_GAMMA_FACTOR);
 	res.rgb = saturate(color).rgb;
 	res.a = 1.0;
 	return res;
 }
+
+
 
 ////////// VANILLA POST-PROCESS - DO NOT MODIFY
 // Identical to the original one
@@ -307,6 +336,8 @@ float4 PS_DrawOriginal(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	return res;
 }
 
+
+
 ////////// TECHNIQUES
 technique11 Draw <string UIName="D4SCO - Effects";>
 {
@@ -316,6 +347,8 @@ technique11 Draw <string UIName="D4SCO - Effects";>
 		SetPixelShader(CompileShader(ps_5_0, PS_Draw()));
 	}
 }
+
+
 
 // technique11 ORIGINALPOSTPROCESS <string UIName="Vanilla";> //do not modify this technique
 // {
