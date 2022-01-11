@@ -86,17 +86,13 @@ UI_SEPARATOR_CUSTOM("AGCC Settings :")
 
 UI_SPLITTER(3)
 UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
-UI_FLOAT(PARAM_AGCC_WEIGHT, "1.00 | AGCC Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_TINT_LIMIT, "1.00 | Game Tint (max)", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_FADE_LIMIT, "1.00 | Game Fade (max)", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_BRIGHTNESS_WEIGHT, "1.00 | AGCC Exposure Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_CONTRAST_WEIGHT, "1.00 | AGCC Contrast Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_SATURATION_WEIGHT, "1.00 | AGCC Saturation Weight", 0.0, 1.0, 1.0)
 UI_WHITESPACE(4)
-UI_FLOAT(PARAM_AGCC_EXP_MIN, "0.00 | Game Exposure (min)", 0.0, 1.0, 0.0)
-UI_FLOAT(PARAM_AGCC_EXP_MAX, "1.00 | Game Exposure (max)", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_CTR_MIN, "0.00 | Game Contrast (min)", 0.0, 1.0, 0.0)
-UI_FLOAT(PARAM_AGCC_CTR_MAX, "1.00 | Game Contrast (max)", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_SAT_MIN, "0.00 | Game Saturation (min)", 0.0, 1.0, 0.0)
-UI_FLOAT(PARAM_AGCC_SAT_MAX, "1.00 | Game Saturation (max)", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_MIDDLE_GREY, "0.50 | Middle Grey", 0.0, 1.0, 0.5)
+UI_FLOAT(PARAM_AGCC_TINT_WEIGHT, "1.00 | AGCC Tint Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_FADE_WEIGHT, "1.00 | AGCC Fade Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_MIDDLE_GREY_MULTIPLIER, "1.00 | Middle Grey Multiplier", 0.0, 2.0, 1.0)
 
 UI_WHITESPACE(5)
 
@@ -111,10 +107,10 @@ UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0
 UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0, 0.3)
 UI_WHITESPACE(6)
 UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "# Use Secondary Tonemap ?", false)
-UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 5.0, 5.0)
+UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 10.0, 4.0)
 UI_WHITESPACE(7)
 UI_BOOL(PARAM_TONEMAP_GAMMA_ENABLE, "# Use Gamma Factor ?", false)
-UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "1.00 | Gamma Factor", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "1.00 | Gamma Factor", 0.0, 2.0, 1.1)
 
 
 
@@ -211,13 +207,12 @@ struct VS_OUTPUT_POST
 ////////// AGCC
 float3 applyAGCC(float3 color)
 {
-	float3 res = color.rgb;
-	float grey = dot(color, LUM_709);
+	float grey = dot(color, LUM_709) * PARAM_AGCC_MIDDLE_GREY_MULTIPLIER;
 
 	// Game parameters
-	float IS_SATURATION = clamp(Params01[3].x, PARAM_AGCC_SAT_MIN, PARAM_AGCC_SAT_MAX);
-	float IS_CONTRAST = clamp(Params01[3].z, PARAM_AGCC_CTR_MIN, PARAM_AGCC_CTR_MAX);
-	float IS_EXPOSURE = clamp(Params01[3].w, PARAM_AGCC_EXP_MIN, PARAM_AGCC_EXP_MAX);
+	float IS_EXPOSURE = Params01[3].w;
+	float IS_CONTRAST = Params01[3].z;
+	float IS_SATURATION = Params01[3].x;
 
 	float3 GAME_TINT_COLOR = Params01[4].rgb;
 	float GAME_TINT_WEIGHT = Params01[4].w;
@@ -225,21 +220,18 @@ float3 applyAGCC(float3 color)
 	float3 GAME_FADE_COLOR = Params01[5].xyz;
 	float GAME_FADE_WEIGHT = Params01[5].w;
 
-	// Saturation
-	res.rgb = max(lerp(grey, res, IS_SATURATION), 0.0);
-
-	// Logarithmic contrast and exposure
-	res.rgb = log2(res.rgb * IS_EXPOSURE + DELTA6);
-	res.rgb = max(exp2(lerp(PARAM_AGCC_MIDDLE_GREY, res.rgb, IS_CONTRAST)) - DELTA6, 0.0);
+	// Logarithmic contrast and exposure, and saturation weighting
+	color.rgb = log2(lerp(color.rgb, color.rgb * IS_EXPOSURE + DELTA6, PARAM_AGCC_BRIGHTNESS_WEIGHT));
+	color.rgb = max(lerp(exp2(color.rgb) - DELTA6, exp2(lerp(grey, color.rgb, IS_CONTRAST)) - DELTA6, PARAM_AGCC_CONTRAST_WEIGHT), 0.0);
+	color.rgb = lerp(color.rgb, max(lerp(grey, color, IS_SATURATION), 0.0), PARAM_AGCC_SATURATION_WEIGHT);
 
 	// Tint and fade
-	// Applied after general weighting to better control color settings
-	res.rgb = lerp(color.rgb, res.rgb, PARAM_AGCC_WEIGHT);
-	res.rgb = lerp(res.rgb, GAME_TINT_COLOR * grey, min(GAME_TINT_WEIGHT, PARAM_AGCC_TINT_LIMIT));
-	res.rgb = lerp(res.rgb, GAME_FADE_COLOR, min(GAME_FADE_WEIGHT, PARAM_AGCC_FADE_LIMIT));
+	// Applied after other weights to allow for better color control
+	color.rgb = lerp(color.rgb, GAME_TINT_COLOR * grey, lerp(0.0, GAME_TINT_WEIGHT, PARAM_AGCC_TINT_WEIGHT));
+	color.rgb = lerp(color.rgb, GAME_FADE_COLOR, lerp(0.0, GAME_FADE_WEIGHT, PARAM_AGCC_FADE_WEIGHT));
 
 	// Return
-	return res.rgb;
+	return color.rgb;
 }
 
 
@@ -328,6 +320,7 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	color.rgb += lens * ENB_LENS_AMOUNT;
 	color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
 
+	// TODO Check what the difference would be between RGB and iCtCp
 	// Base adjustments
 	color.rgb *= PARAM_BASE_BRIGHTNESS;
 	color.rgb += 0.00001;
