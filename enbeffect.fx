@@ -13,7 +13,7 @@
 
 ////////// CONSTANTS & HANDLES
 #define remap(v, a, b) (((v) - (a)) / ((b) - (a)))
-#define LUM_709 float3(0.2125, 0.7154, 0.0721)
+
 
 
 
@@ -61,32 +61,50 @@ UI_WHITESPACE(1)
 UI_SEPARATOR_CUSTOM("Base Image Settings :")
 
 UI_SPLITTER(2)
-UI_FLOAT(PARAM_ADAPTATION_BORDER_MIN, "[0.00] Adaptation (min)", 0.0, 100.0, 0.0)
-UI_FLOAT(PARAM_ADAPTATION_BORDER_MAX, "[50.0] Adaptation (max)", 0.0, 100.0, 50.0)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "[0.50] Adaptation Divider (min)", 0.0, 1.0, 0.5)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "[1.00] Adaptation Divider (max)", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_ADAPTATION_BORDER_MIN, "0.00 | Adaptation (min)", 0.0, 100.0, 0.0)
+UI_FLOAT(PARAM_ADAPTATION_BORDER_MAX, "50.0 | Adaptation (max)", 0.0, 100.0, 50.0)
+UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "0.50 | Adaptation Divider (min)", 0.0, 1.0, 0.5)
+UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "1.00 | Adaptation Divider (max)", 0.0, 1.0, 1.0)
 UI_WHITESPACE(2)
-UI_FLOAT(PARAM_BASE_BRIGHTNESS, "[1.00] Brightness", 0.0, 2.0, 1.0)
-UI_FLOAT(PARAM_BASE_CONTRAST, "[1.00] Contrast", 0.0, 2.0, 1.0)
-UI_FLOAT(PARAM_BASE_SATURATION, "[1.00] Saturation", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
 
 UI_WHITESPACE(3)
+
+#define UI_CATEGORY AGCC
+UI_SEPARATOR_CUSTOM("AGCC Settings :")
+
+UI_SPLITTER(3)
+UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
+UI_FLOAT(PARAM_AGCC_TINT_LIMIT, "1.00 | Game Tint (max)", 0.0, 10.0, 1.0)
+UI_FLOAT(PARAM_AGCC_FADE_LIMIT, "1.00 | Game Fade (max)", 0.0, 10.0, 1.0)
+UI_WHITESPACE(4)
+UI_FLOAT(PARAM_AGCC_EXP_MIN, "0.00 | Game Exposure (min)", 0.0, 5.0, 0.0)
+UI_FLOAT(PARAM_AGCC_EXP_MAX, "1.00 | Game Exposure (max)", 0.0, 5.0, 1.0)
+UI_FLOAT(PARAM_AGCC_CTR_MIN, "0.00 | Game Contrast (min)", 0.0, 5.0, 0.0)
+UI_FLOAT(PARAM_AGCC_CTR_MAX, "1.00 | Game Contrast (max)", 0.0, 5.0, 1.0)
+UI_FLOAT(PARAM_AGCC_SAT_MIN, "0.00 | Game Saturation (min)", 0.0, 5.0, 0.0)
+UI_FLOAT(PARAM_AGCC_SAT_MAX, "1.00 | Game Saturation (max)", 0.0, 5.0, 1.0)
+UI_FLOAT(PARAM_AGCC_MIDDLE_GREY, "0.50 | Middle Grey", 0.0, 1.0, 0.5)
+
+UI_WHITESPACE(5)
 
 #define UI_CATEGORY Tonemap
 UI_SEPARATOR_CUSTOM("Tonemap Settings :")
 
-UI_SPLITTER(3)
-UI_BOOL(PARAM_TONEMAP_PROCESS_ENABLE, "[ ] Use Frostbyte Tonemap Processing ?", false)
-UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "[0.25] Compression Lower Bound", 0.0, 1.0, 0.25)
-UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "[0.70] Desaturation Amount", 0.0, 1.0, 0.7)
-UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "[0.60] Hue-Shift Multiplier", 0.0, 1.0, 0.6)
-UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "[0.30] Saturation Multiplier", 0.0, 1.0, 0.3)
-UI_WHITESPACE(4)
-UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "[ ] Use Secondary Tonemap ?", false)
-UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "[4.00] Whitepoint", 2.5, 7.5, 4.0)
-UI_WHITESPACE(5)
-UI_BOOL(PARAM_TONEMAP_GAMMA_ENABLE, "[ ] Use Gamma Factor ?", false)
-UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "[1.00] Gamma Factor", 0.0, 2.0, 1.0)
+UI_SPLITTER(4)
+UI_BOOL(PARAM_TONEMAP_PROCESS_ENABLE, "# Use Frostbyte Tonemap Processing ?", false)
+UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "0.25 | Compression Lower Bound", 0.0, 1.0, 0.25)
+UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "0.70 | Desaturation Amount", 0.0, 1.0, 0.7)
+UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0.6)
+UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0, 0.3)
+UI_WHITESPACE(6)
+UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "# Use Secondary Tonemap ?", false)
+UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 5.0, 5.0)
+UI_WHITESPACE(7)
+UI_BOOL(PARAM_TONEMAP_GAMMA_ENABLE, "# Use Gamma Factor ?", false)
+UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "1.00 | Gamma Factor", 0.0, 2.0, 1.0)
 
 
 
@@ -132,7 +150,7 @@ Texture2D TextureAperture; // This frame aperture 1*1 R32F HDR red channel only.
 // Texture2D TexturePalette; // enbpalette texture, if loaded and enabled in [colorcorrection].
 
 // Textures of multipass techniques
-Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
+// Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
 // Temporary render targets
 // Texture2D RenderTargetRGBA32; // R8G8B8A8 32 bit LDR format
 // Texture2D RenderTargetRGBA64; // R16B16G16A16 64 bit LDR format
@@ -169,6 +187,34 @@ struct VS_OUTPUT_POST
 	float4 pos : SV_POSITION;
 	float2 txcoord0 : TEXCOORD0;
 };
+
+
+
+////////// AGCC
+float3 applyAGCC(float3 color)
+{
+	float grey = dot(color, LUM_709);
+	float IS_SATURATION = clamp(Params01[3].x, PARAM_AGCC_SAT_MIN, PARAM_AGCC_SAT_MAX);
+	float IS_CONTRAST = clamp(Params01[3].z, PARAM_AGCC_CTR_MIN, PARAM_AGCC_CTR_MAX);
+	float IS_EXPOSURE = clamp(Params01[3].w, PARAM_AGCC_EXP_MIN, PARAM_AGCC_EXP_MAX);
+
+	float3 GAME_TINT_COLOR = Params01[4].rgb;
+	float GAME_TINT_WEIGHT = Params01[4].w;
+
+	float3 GAME_FADE_COLOR = Params01[5].xyz;
+	float GAME_FADE_WEIGHT = Params01[5].w;
+
+	// Tint, fade and saturation
+	color.rgb = lerp(color.rgb, GAME_TINT_COLOR * grey, min(GAME_TINT_WEIGHT, PARAM_AGCC_TINT_LIMIT));
+	color.rgb = lerp(color.rgb, GAME_FADE_COLOR, min(GAME_FADE_WEIGHT, PARAM_AGCC_FADE_LIMIT));
+	color.rgb = max(lerp(grey, color, IS_SATURATION), 0.0);
+
+	// Logarithmic contrast and exposure
+	color.rgb = log2(color.rgb * IS_EXPOSURE + DELTA);
+	color.rgb = max(exp2(lerp(PARAM_AGCC_MIDDLE_GREY, color.rgb, IS_CONTRAST)) - DELTA, 0.0);
+
+	return color.rgb;
+}
 
 
 
@@ -241,7 +287,7 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	//	- lens the ENB lens texture (rgb)
 	//	- bloom the ENB bloom texture (rgb)
 	//	- adaptation the ENB adaptation coefficient
-	float4 color = TextureOriginal.Sample(Sampler0, coords.xy).rgba; // HDR scene color
+	float4 color = TextureColor.Sample(Sampler0, coords.xy).rgba; // HDR scene color
 	float3 lens = TextureLens.Sample(Sampler1, coords.xy).rgb;
 	float3 bloom = TextureBloom.Sample(Sampler1, coords.xy).rgb;
 	float adaptation = TextureAdaptation.Sample(Sampler0, coords.xy).x;
@@ -267,9 +313,16 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	ncolor.rgb = pow(ncolor.rgb, PARAM_BASE_SATURATION);
 
 	color.rgb = ncoeff.rgb * ncolor.rgb;
+
+	// AGCC
+	if (PARAM_AGCC_ENABLE) color.rgb = applyAGCC(color.rgb);
+
+	// Tonemapping
 	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbyteDisplayMapper(color.rgb);
 	if (PARAM_TONEMAP_GAMMA_ENABLE) color.rgb = gamma(color.rgb, PARAM_TONEMAP_GAMMA_FACTOR);
 	res.rgb = saturate(color).rgb;
+
+	// Return
 	res.a = 1.0;
 	return res;
 }

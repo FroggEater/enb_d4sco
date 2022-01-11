@@ -8,8 +8,12 @@ static const float PQ_CONST_C1 = (3424.0 / 4096.0);
 static const float PQ_CONST_C2 = (2413.0 / 4096.0 * 32.0);
 static const float PQ_CONST_C3 = (2392.0 / 4096.0 * 32.0);
 
+static const float DELTA = 1e-6;
+
 static const float pst32 = 0.03125;
 static const float hst32 = 0.015625;
+
+static const float3 LUM_709 = float3(0.2125, 0.7154, 0.0721);
 
 
 
@@ -24,27 +28,6 @@ int divideup(int a, int b)
 {
   if (b == 0) return 0;
   return int(a + b - 1) / int(b);
-}
-
-float shoulder(float x)
-{
-  return 1.0 - exp(-x);
-}
-
-float shoulder(float x, float t)
-{
-  float a = x;
-  float b = t + (1.0 - t) * shoulder((x - t) / (1.0 - t));
-  return x < t ? a : b;
-}
-
-float3 shoulder(float3 x, float t)
-{
-  return float3(
-    shoulder(x.x, t),
-    shoulder(x.y, t),
-    shoulder(x.z, t)
-  );
 }
 
 
