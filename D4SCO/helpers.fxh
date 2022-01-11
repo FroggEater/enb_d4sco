@@ -8,7 +8,8 @@ static const float PQ_CONST_C1 = (3424.0 / 4096.0);
 static const float PQ_CONST_C2 = (2413.0 / 4096.0 * 32.0);
 static const float PQ_CONST_C3 = (2392.0 / 4096.0 * 32.0);
 
-static const float DELTA = 1e-6;
+static const float DELTA6 = 1e-6;
+static const float DELTA3 = 1e-3;
 
 static const float pst32 = 0.03125;
 static const float hst32 = 0.015625;
