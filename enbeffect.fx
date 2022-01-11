@@ -77,6 +77,7 @@ UI_SEPARATOR_CUSTOM("AGCC Settings :")
 
 UI_SPLITTER(3)
 UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
+UI_FLOAT(PARAM_AGCC_WEIGHT, "1.00 | AGCC Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_TINT_LIMIT, "1.00 | Game Tint (max)", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_FADE_LIMIT, "1.00 | Game Fade (max)", 0.0, 1.0, 1.0)
 UI_WHITESPACE(4)
@@ -193,6 +194,7 @@ struct VS_OUTPUT_POST
 ////////// AGCC
 float3 applyAGCC(float3 color)
 {
+	float3 res = color.rgb;
 	float grey = dot(color, LUM_709);
 
 	// Game parameters
@@ -207,16 +209,17 @@ float3 applyAGCC(float3 color)
 	float GAME_FADE_WEIGHT = Params01[5].w;
 
 	// Tint, fade and saturation
-	color.rgb = lerp(color.rgb, GAME_TINT_COLOR * grey, min(GAME_TINT_WEIGHT, PARAM_AGCC_TINT_LIMIT));
-	color.rgb = lerp(color.rgb, GAME_FADE_COLOR, min(GAME_FADE_WEIGHT, PARAM_AGCC_FADE_LIMIT));
-	color.rgb = max(lerp(grey, color, IS_SATURATION), 0.0);
+	res.rgb = lerp(res.rgb, GAME_TINT_COLOR * grey, min(GAME_TINT_WEIGHT, PARAM_AGCC_TINT_LIMIT));
+	res.rgb = lerp(res.rgb, GAME_FADE_COLOR, min(GAME_FADE_WEIGHT, PARAM_AGCC_FADE_LIMIT));
+	res.rgb = max(lerp(grey, res, IS_SATURATION), 0.0);
 
 	// Logarithmic contrast and exposure
-	color.rgb = log2(color.rgb * IS_EXPOSURE + DELTA6);
-	color.rgb = max(exp2(lerp(PARAM_AGCC_MIDDLE_GREY, color.rgb, IS_CONTRAST)) - DELTA6, 0.0);
+	res.rgb = log2(res.rgb * IS_EXPOSURE + DELTA6);
+	res.rgb = max(exp2(lerp(PARAM_AGCC_MIDDLE_GREY, res.rgb, IS_CONTRAST)) - DELTA6, 0.0);
 
 	// Return
-	return color.rgb;
+	// return res.rgb;
+	return lerp(color.rgb, res.rgb, PARAM_AGCC_WEIGHT);
 }
 
 

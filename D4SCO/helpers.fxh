@@ -32,7 +32,6 @@ int divideup(int a, int b)
 }
 
 
-
 ////////// COLOR OPERATORS
 
 
