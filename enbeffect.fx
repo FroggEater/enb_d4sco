@@ -1,40 +1,48 @@
+// TODO Replace AGCC parameter clamping by color weighting
 ////////// D4SCO enbeffect.fx - 1.0
-////////// Provided as is by FroggEater
-////////// thanks to :
-//////////  - firemanaf (AGCC, tonemapping, effects)
-//////////  - The Sandvich Maker (UI macros, dithering, general understanding)
-//////////  - prod80 (contrast correction)
-//////////  - Boris Vorontsov (of course)
+////////// by FroggEater
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates
 ////////// > visit the Nexus for D4SCO updates
 
 
 
-////////// CONSTANTS & HANDLES
-#define remap(v, a, b) (((v) - (a)) / ((b) - (a)))
-
-
-
-
 ////////// EXTERNAL PARAMETERS
-//x = generic timer in range 0..1, period of 16777216 ms (4.6 hours), y = average fps, w = frame time elapsed (in seconds)
+// x > generic timer between 0 and 1, period of 16777216ms (= 4.6h)
+// y > average FPS
+// w > elapsed frametime (in seconds)
 float4 Timer;
-//x = Width, y = 1/Width, z = aspect, w = 1/aspect, aspect is Width/Height
+// x > width
+// y > 1 / width
+// z > aspect (= width / height)
+// w > 1 / aspect
 float4 ScreenSize;
-//changes in range 0..1, 0 means full quality, 1 lowest dynamic quality (0.33, 0.66 are limits for quality levels)
+// Quality from highest to lowest between 0 and 1 (0.33 and 0.66 are valid steps)
 float	AdaptiveQuality;
-//x = current weather index, y = outgoing weather index, z = weather transition, w = time of the day in 24 standart hours. Weather index is value from weather ini file, for example WEATHER002 means index==2, but index==0 means that weather not captured.
+// Index from the weather's INI file (eg. WEATHER002 means 2, 0 is not captured)
+// x > current weather index
+// y > outgoing weather index
+// z > weather transition
+// w > time of the day in 24h format Weather index is .
 float4 Weather;
-//x = dawn, y = sunrise, z = day, w = sunset. Interpolators range from 0..1
+// All are interpolators between 0 and 1
+// x > dawn
+// y > sunrise
+// z > day
+// w > sunset
 float4 TimeOfDay1;
-//x = dusk, y = night. Interpolators range from 0..1
+// All are interpolators between 0 and 1
+// x > dusk
+// y > night
 float4 TimeOfDay2;
-//changes in range 0..1, 0 means that night time, 1 - day time
+// 0 if it is night time, 1 if it is day time
 float	ENightDayFactor;
-//changes 0 or 1. 0 means that exterior, 1 - interior
+// 0 if in exterior space, 1 if in interior space
 float	EInteriorFactor;
-//x = Width, y = 1/Width, z = aspect, w = 1/aspect, aspect is Width/Height
+// x > width
+// y > 1 / width
+// z > aspect (= width / height)
+// w > 1 / aspect
 float4 BloomSize;
 
 
@@ -51,8 +59,9 @@ float4 BloomSize;
 
 #define UI_CATEGORY Credits
 
-UI_MESSAGE(Credits0, "D4SCO")
+UI_MESSAGE(Credits0, "D4SCO - Effects")
 UI_MESSAGE(Credits1, "by FroggEater")
+UI_MESSAGE(Credits2, "ver. 1.0")
 UI_SPLITTER(1)
 
 UI_WHITESPACE(1)
@@ -111,33 +120,41 @@ UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "1.00 | Gamma Factor", 0.0, 2.0, 1.0)
 
 ////////// EXTERNAL ENB DEBUGGING PARAMETERS
 // Keyboard controlled temporary variables
-// Press and hold key 1,2,3...8 together with PageUp or PageDown to modify
+// Press and hold one of the number keys together with PgUp or PgDown to modify
 // By default all set to 1.0
-float4 tempF1; // 0,1,2,3
-float4 tempF2; // 5,6,7,8
-float4 tempF3; // 9,0
-// xy = cursor position in range 0..1 of screen;
-// z = is shader editor window active;
-// w = mouse buttons with values 0..7 as follows:
+float4 tempF1; // 0, 1, 2, 3
+float4 tempF2; // 4, 5, 6, 7
+float4 tempF3; // 8, 9
+// Mouse controlled temporary variables
+// x, y > cursor position on screen, between 0 and 1
+// z > shader editor window active
+// w > mouse buttons currently pressed with values between 0 and 7 :
 //    0 = none
 //    1 = left
 //    2 = right
-//    3 = left+right
+//    3 = left + right
 //    4 = middle
-//    5 = left+middle
-//    6 = right+middle
-//    7 = left+right+middle (or rather cat is sitting on your mouse)
+//    5 = left + middle
+//    6 = right + middle
+//    7 = left + right + middle
 float4 tempInfo1;
-// xy = cursor position of previous left mouse button click
-// zw = cursor position of previous right mouse button click
+// Mouse controlled temporary variables (past)
+// x, y > cursor position on screen, between 0 and 1 (last left click)
+// z, w > cursor position on screen, between 0 and 1 (last right click)
 float4 tempInfo2;
 
 
 
 ////////// GAME PARAMETERS
-float4 Params01[7]; // SSE parameters
-// x - bloom amount; y - lens amount
-float4 ENBParams01; // ENB parameters
+// SSE parameters
+// 3 > x, z, w as contrast, saturation, brightness
+// 4 > r, g, b as tint color value, w as tint weight
+// 5 > x, y, z as fade color value, w as fade weight (only active during some FX)
+float4 Params01[7];
+// ENB parameters
+// x > bloom amount
+// y > lens amount
+float4 ENBParams01;
 
 
 
@@ -176,7 +193,7 @@ SamplerState Sampler1
 
 
 
-////////// INPUT & OUTPUT
+////////// INPUT & OUTPUT STRUCTS
 struct VS_INPUT_POST
 {
 	float3 pos : POSITION;
@@ -208,18 +225,21 @@ float3 applyAGCC(float3 color)
 	float3 GAME_FADE_COLOR = Params01[5].xyz;
 	float GAME_FADE_WEIGHT = Params01[5].w;
 
-	// Tint, fade and saturation
-	res.rgb = lerp(res.rgb, GAME_TINT_COLOR * grey, min(GAME_TINT_WEIGHT, PARAM_AGCC_TINT_LIMIT));
-	res.rgb = lerp(res.rgb, GAME_FADE_COLOR, min(GAME_FADE_WEIGHT, PARAM_AGCC_FADE_LIMIT));
+	// Saturation
 	res.rgb = max(lerp(grey, res, IS_SATURATION), 0.0);
 
 	// Logarithmic contrast and exposure
 	res.rgb = log2(res.rgb * IS_EXPOSURE + DELTA6);
 	res.rgb = max(exp2(lerp(PARAM_AGCC_MIDDLE_GREY, res.rgb, IS_CONTRAST)) - DELTA6, 0.0);
 
+	// Tint and fade
+	// Applied after general weighting to better control color settings
+	res.rgb = lerp(color.rgb, res.rgb, PARAM_AGCC_WEIGHT);
+	res.rgb = lerp(res.rgb, GAME_TINT_COLOR * grey, min(GAME_TINT_WEIGHT, PARAM_AGCC_TINT_LIMIT));
+	res.rgb = lerp(res.rgb, GAME_FADE_COLOR, min(GAME_FADE_WEIGHT, PARAM_AGCC_FADE_LIMIT));
+
 	// Return
-	// return res.rgb;
-	return lerp(color.rgb, res.rgb, PARAM_AGCC_WEIGHT);
+	return res.rgb;
 }
 
 
