@@ -1,3 +1,11 @@
+////////// D4SCO Helpers - 1.0
+////////// by FroggEater
+//////////
+////////// > visit http://enbdev.com for ENBSeries updates
+////////// > visit the Nexus for D4SCO updates
+
+
+
 ////////// CONSTANTS
 static const float PI = 3.1415926535897932384626433832795;
 static const float rPI = 1.0 / PI;
@@ -23,6 +31,26 @@ float random(in float2 uv)
 {
   float2 noise = (frac(sin(dot(uv , float2(12.9898,78.233) * 2.0)) * 43758.5453));
   return abs(noise.x + noise.y) * 0.5;
+}
+
+float sq(float a)
+{
+  return pow(a, 2.0);
+}
+
+float sum(float2 v)
+{
+  return v.x + v.y;
+}
+
+float sum(float3 v)
+{
+  return sum(v.xy) + v.z;
+}
+
+float sum(float4 v)
+{
+  return sum(v.xyz) + v.w;
 }
 
 int divideup(int a, int b)

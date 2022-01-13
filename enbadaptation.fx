@@ -1,38 +1,44 @@
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
-// ENBSeries Fallout 4 adaptation file, hlsl DX11                   //
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
-//  Histogram based adaptation by kingeric1992                      //
-//      based on the description here:                              //
-//  https://docs.unrealengine.com/latest/INT/Engine/Rendering/PostProcessEffects/AutomaticExposure/
-//                                                                  //
-//  For more info, visit                                            //
-//     http://enbseries.enbdev.com/forum/viewtopic.php?f=7&t=5321   //
-//                                                                  //
-//  update: Nov.23.2016                                             //
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++//
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+// ENBSeries TES Skyrim SE hlsl DX11 format, example adaptation
+// visit http://enbdev.com for updates
+// Author: Boris Vorontsov
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 
 
-int   Title0        < string UIName="\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4\xA4"; float UIMin=0.0; float UIMax=0.0; > = { 0 };
-int   Title1        < string UIName=" "; float UIMin=0.0; float UIMax=0.0; > = { 0 };
-float Bias          < string UIName="Auto Exposure Bias (log2 scale)"; > = {0.0};
-float MaxBrightness < string UIName="Adapt Max Brightness (log2 scale)"; float UIMin= -9.0; float UIMax=3.0; > = { 0.80 };
-float MinBrightness < string UIName="Adapt Min Brightness (log2 scale)"; float UIMin= -9.0; float UIMax=3.0; > = { 0.80 };
-float LowPercent    < string UIName="Adapt Low  Percent";                float UIMin=  0.5; float UIMax=1.0; > = { 0.80 };
-float HighPercent   < string UIName="Adapt High Percent";                float UIMin=  0.5; float UIMax=1.0; > = { 0.95 };
 
 //+++++++++++++++++++++++++++++
-//external enb parameters, do not modify (shared)
+//internal parameters, modify or add new
 //+++++++++++++++++++++++++++++
-float4	Timer;           //x = generic timer in range 0..1, period of 16777216 ms (4.6 hours), y = average fps, w = frame time elapsed (in seconds)
-float4	ScreenSize;      //x = Width, y = 1/Width, z = Width/Height, w = Height/Width
-float	AdaptiveQuality; //changes in range 0..1, 0 means full quality, 1 lowest dynamic quality (0.33, 0.66 are limits for quality levels)
-float4	Weather;         //x = current weather index, y = outgoing weather index, z = weather transition, w = time of the day in 24 standart hours.
-float4	TimeOfDay1;      //x = dawn, y = sunrise, z = day, w = sunset. Interpolators range from 0..1
-float4	TimeOfDay2;      //x = dusk, y = night. Interpolators range from 0..1
-float	ENightDayFactor; //changes in range 0..1, 0 means that night time, 1 - day time
-float	EInteriorFactor; //changes 0 or 1. 0 means that exterior, 1 - interior
+
+
+
+//+++++++++++++++++++++++++++++
+//external enb parameters, do not modify
+//+++++++++++++++++++++++++++++
+//x = generic timer in range 0..1, period of 16777216 ms (4.6 hours), y = average fps, w = frame time elapsed (in seconds)
+float4	Timer;
+//x = Width, y = 1/Width, z = aspect, w = 1/aspect, aspect is Width/Height
+float4	ScreenSize;
+//changes in range 0..1, 0 means full quality, 1 lowest dynamic quality (0.33, 0.66 are limits for quality levels)
+float	AdaptiveQuality;
+//x = current weather index, y = outgoing weather index, z = weather transition, w = time of the day in 24 standart hours. Weather index is value from weather ini file, for example WEATHER002 means index==2, but index==0 means that weather not captured.
+float4	Weather;
+//x = dawn, y = sunrise, z = day, w = sunset. Interpolators range from 0..1
+float4	TimeOfDay1;
+//x = dusk, y = night. Interpolators range from 0..1
+float4	TimeOfDay2;
+//changes in range 0..1, 0 means that night time, 1 - day time
+float	ENightDayFactor;
+//changes 0 or 1. 0 means that exterior, 1 - interior
+float	EInteriorFactor;
+
+//+++++++++++++++++++++++++++++
+//external enb debugging parameters for shader programmers, do not modify
+//+++++++++++++++++++++++++++++
 //keyboard controlled temporary variables. Press and hold key 1,2,3...8 together with PageUp or PageDown to modify. By default all set to 1.0
-float4	tempF1, tempF2, tempF3; //0,1,2,3,4,5,6,7,8,9
+float4	tempF1; //0,1,2,3
+float4	tempF2; //5,6,7,8
+float4	tempF3; //9,0
 // xy = cursor position in range 0..1 of screen;
 // z = is shader editor window active;
 // w = mouse buttons with values 0..7 as follows:
@@ -45,30 +51,70 @@ float4	tempF1, tempF2, tempF3; //0,1,2,3,4,5,6,7,8,9
 //    6 = right+middle
 //    7 = left+right+middle (or rather cat is sitting on your mouse)
 float4	tempInfo1;
-float4	tempInfo2; // xy = cursor position of previous left click, zw = cursor position of previous right click
+// xy = cursor position of previous left mouse button click
+// zw = cursor position of previous right mouse button click
+float4	tempInfo2;
+
+
 
 //+++++++++++++++++++++++++++++
 //game and mod parameters, do not modify
 //+++++++++++++++++++++++++++++
-float4				AdaptationParameters; //x = AdaptationMin, y = AdaptationMax, z = AdaptationSensitivity, w = AdaptationTime multiplied by time elapsed
+//x = AdaptationMin, y = AdaptationMax, z = AdaptationSensitivity, w = AdaptationTime multiplied by time elapsed
+float4				AdaptationParameters;
+
 Texture2D			TextureCurrent;
 Texture2D			TexturePrevious;
 
-SamplerState		Sampler0 {
-	Filter = MIN_MAG_MIP_POINT;//MIN_MAG_MIP_LINEAR;
-	AddressU = Clamp;	AddressV = Clamp;
-};
-
-SamplerState		Sampler1 {
-	Filter = MIN_MAG_MIP_LINEAR;
-	AddressU = Clamp;	AddressV = Clamp;
-};
-
-void VS_Quad( inout float4 pos : SV_POSITION, inout float2 txcoord0 : TEXCOORD0)
+SamplerState		Sampler0
 {
-    pos.w     = 1.0;
-    txcoord0 -= 7.0 / 256.0;
+	Filter = MIN_MAG_MIP_POINT;//MIN_MAG_MIP_LINEAR;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+SamplerState		Sampler1
+{
+	Filter = MIN_MAG_MIP_LINEAR;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+
+
+//+++++++++++++++++++++++++++++
+//
+//+++++++++++++++++++++++++++++
+struct VS_INPUT_POST
+{
+	float3 pos		: POSITION;
+	float2 txcoord	: TEXCOORD0;
+};
+struct VS_OUTPUT_POST
+{
+	float4 pos		: SV_POSITION;
+	float2 txcoord0	: TEXCOORD0;
+};
+
+
+
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+//
+//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+VS_OUTPUT_POST	VS_Quad(VS_INPUT_POST IN, uniform float sizeX, uniform float sizeY)
+{
+	VS_OUTPUT_POST	OUT;
+	float4	pos;
+	pos.xyz=IN.pos.xyz;
+	pos.w=1.0;
+	OUT.pos=pos;
+	float2	offset;
+	offset.x=sizeX;
+	offset.y=sizeY;
+	OUT.txcoord0.xy=IN.txcoord.xy + offset.xy;
+	return OUT;
 }
+
+
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //output size is 16*16
@@ -76,26 +122,56 @@ void VS_Quad( inout float4 pos : SV_POSITION, inout float2 txcoord0 : TEXCOORD0)
 //input texture is R16G16B16A16 or R11G11B10 float format (alpha ignored)
 //output texture is R32 float format (red channel only)
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-float4	PS_Downsample( float4 pos : SV_POSITION, float2 txcoord0 : TEXCOORD0) : SV_Target
+float4	PS_Downsample(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 {
-	float  res = 0.0;
-    float4 coord = { txcoord0.xyy, 1.0 / 128.0 };
+	float4	res;
 
-	for (int x=0; x<8; x++)
+	//downsample 256*256 to 16*16
+	//more complex blurring methods affect result if sensitivity uncommented
+	float2	pos;
+	float2	coord;
+	float4	curr=0.0;
+	float4	currmax=0.0;
+	const float	scale=1.0/16.0;
+	const float	step=1.0/16.0;
+	const float	halfstep=0.5/16.0;
+	pos.x=-0.5+halfstep;
+	for (int x=0; x<16; x++)
 	{
-		coord.y = coord.z;
-		for (int y=0; y<8; y++)
+		pos.y=-0.5+halfstep;
+		for (int y=0; y<16; y++)
 		{
-			float4 color = TextureCurrent.Sample(Sampler1, coord.xy);
-			res     += max( color.r, max(color.g, color.b));
-			coord.y += coord.w;
-		}
-		coord.x += coord.w;
-	}
+			coord=pos.xy * scale;
+			float4	tempcurr=TextureCurrent.Sample(Sampler0, IN.txcoord0.xy + coord.xy);
+			currmax=max(currmax, tempcurr);
+			curr+=tempcurr;
 
-	return log2(res) - 6.0; //log2( res / 64.0)
+			pos.y+=step;
+		}
+		pos.x+=step;
+	}
+	curr*=1.0/(16.0*16.0);
+
+	res=curr;
+
+	//adjust sensitivity to small bright areas on the screen
+	//Warning! Uncommenting the next line increases sensitivity a lot
+	//res=lerp(curr, currmax, AdaptationParameters.z); //AdaptationSensitivity
+
+	//TODO modify this math to your taste, for example lower intensity for blue colors
+	//gray output
+	//v1
+	res=max(res.x, max(res.y, res.z));
+	//v2
+	//res=dot(res.xyz, 0.3333);
+	//v3
+	//res=dot(res.xyz, float3(0.2125, 0.7154, 0.0721));
+
+	res.w=1.0;
+	return res;
 }
+
+
 
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //output size is 1*1
@@ -103,75 +179,78 @@ float4	PS_Downsample( float4 pos : SV_POSITION, float2 txcoord0 : TEXCOORD0) : S
 //TextureCurrent size is 16*16
 //output and input textures are R32 float format (red channel only)
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
-float4	PS_Histogram() : SV_Target
+float4	PS_Adaptation(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 {
-    float4 coord = { 1.0 / 32.0, 1.0 / 32.0, 1.0 / 32.0, 1.0 / 16.0};
-    float4 bin[16];
+	float4	res;
 
-    for(int k=0; k<16; k++)
-    {
-        bin[k]=float4(0.0, 0.0, 0.0, 0.0);
-    }
+	float	prev=TexturePrevious.Sample(Sampler0, IN.txcoord0.xy).x;
 
-    [loop]
-    for(int i=0; i < 16.0; i++)
-    {
-        coord.y  = coord.z;
-        [loop]
-        for(int j=0; j<16.0; j++)
-        {
-            float  color   = TextureCurrent.SampleLevel(Sampler0, coord.xy, 0.0).r;
-            float  level   = saturate(( color + 9.0 ) / 12) * 63; // [-9, 3]
-            bin[ level * 0.25 ] += float4(0.0, 1.0, 2.0, 3.0) == float4(trunc(level % 4).xxxx); //bitwise ?
-            coord.y  += coord.w;
-        }
-        coord.x += coord.w;
-    }
+	//downsample 16*16 to 1*1
+	float2	pos;
+	float	curr=0.0;
+	float	currmax=0.0;
+	const float	step=1.0/16.0;
+	const float	halfstep=0.5/16.0;
+	pos.x=-0.5+halfstep;
+	for (int x=0; x<16; x++)
+	{
+		pos.y=-0.5+halfstep;
+		for (int y=0; y<16; y++)
+		{
+			float	tempcurr=TextureCurrent.Sample(Sampler0, IN.txcoord0.xy + pos.xy).x;
+			currmax=max(currmax, tempcurr);
+			curr+=tempcurr;
 
-    float2 adaptAnchor = 0.5; //.x = high, .y = low
-    float2 accumulate  = float2( HighPercent - 1.0, LowPercent - 1.0) * 256.0;
+			pos.y+=step;
+		}
+		pos.x+=step;
+	}
+	curr*=1.0/(16.0*16.0);
 
-    [loop]
-    for(int l=15; l>0; l--)
-    {
-        accumulate += bin[l].w;
-        adaptAnchor = (accumulate.xy < bin[l].ww)? l * 4.0 + accumulate.xy / bin[l].ww + 3.0: adaptAnchor;
+	//adjust sensitivity to small bright areas on the screen
+	curr=lerp(curr, currmax, AdaptationParameters.z); //AdaptationSensitivity
 
-        accumulate += bin[l].z;
-        adaptAnchor = (accumulate.xy < bin[l].zz)? l * 4.0 + accumulate.xy / bin[l].zz + 2.0: adaptAnchor;
+	//smooth by time
+	res=lerp(prev, curr, AdaptationParameters.w); //AdaptationTime with elapsed time
 
-        accumulate += bin[l].y;
-        adaptAnchor = (accumulate.xy < bin[l].yy)? l * 4.0 + accumulate.xy / bin[l].yy + 1.0: adaptAnchor;
+	//clamp to avoid bugs in post process shader, which have much lower floating point precision
+	res=max(res, 0.001);
+	res=min(res, 16384.0);
 
-        accumulate += bin[l].x;
-        adaptAnchor = (accumulate.xy < bin[l].xx)? l * 4.0 + accumulate.xy / bin[l].xx + 0.0: adaptAnchor;
-    }
+	//limit value if ForceMinMaxValues=true
+	float	valmax;
+	float	valcut;
+	valmax=max(res.x, max(res.y, res.z));
+	valcut=max(valmax, AdaptationParameters.x); //AdaptationMin
+	valcut=min(valcut, AdaptationParameters.y); //AdaptationMax
+	res*=valcut/(valmax + 0.000000001f);
 
-    float adapt = (adaptAnchor.x + adaptAnchor.y) * 0.5 / 63.0  * 12.0 - 9.0;
-          adapt =  pow(2.0, clamp( adapt, MinBrightness, MaxBrightness) + Bias);  // min max on log2 scale
-
-   	return lerp(TexturePrevious.Sample(Sampler0, 0.5).x, adapt, AdaptationParameters.w);
+	res.w=1.0;
+	return res;
 }
+
+
+
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
 //techniques
 //++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-
+//first pass for downscaling and computing sensitivity
 technique11 Downsample
 {
 	pass p0
 	{
-		SetVertexShader(CompileShader(vs_5_0, VS_Quad()));
+		SetVertexShader(CompileShader(vs_5_0, VS_Quad(0.0, 0.0)));
 		SetPixelShader(CompileShader(ps_5_0, PS_Downsample()));
 	}
 }
 
-technique11 Draw  <string UIName=" _(:3 \xB8/)_";>
+//last pass for mixing everything
+technique11 Draw //<string UIName="ENBAdaptation";>
 {
 	pass p0
 	{
-		SetVertexShader(CompileShader(vs_5_0, VS_Quad()));
-		SetPixelShader(CompileShader(ps_5_0, PS_Histogram()));
+		SetVertexShader(CompileShader(vs_5_0, VS_Quad(0.0, 0.0)));
+		SetPixelShader(CompileShader(ps_5_0, PS_Adaptation()));
 	}
 }
 

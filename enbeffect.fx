@@ -1,5 +1,4 @@
-// TODO Replace AGCC parameter clamping by color weighting
-////////// D4SCO enbeffect.fx - 1.0
+////////// D4SCO Effects - 1.0
 ////////// by FroggEater
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates
@@ -49,7 +48,7 @@ float4 BloomSize;
 
 ////////// INCLUDES
 #include "D4SCO/ReforgedUI.fxh"
-#include "D4SCO/helpers.fxh"
+#include "D4SCO/d4sco_helpers.fxh"
 
 
 
@@ -63,6 +62,17 @@ UI_MESSAGE(Credits0, "D4SCO - Effects")
 UI_MESSAGE(Credits1, "by FroggEater")
 UI_MESSAGE(Credits2, "ver. 1.0")
 UI_SPLITTER(1)
+UI_BOOL(PARAM_DEBUG_ENABLE, "# Enable Debug Mode ?", false)
+UI_BOOL(PARAM_DEBUG_COLOR, "# Show TextureColor ?", false)
+UI_BOOL(PARAM_DEBUG_BLOOM, "# Show TextureBloom ?", false)
+UI_BOOL(PARAM_DEBUG_LENS, "# Show TextureLens ?", false)
+UI_BOOL(PARAM_DEBUG_DEPTH, "# Show TextureDepth ?", false)
+UI_BOOL(PARAM_DEBUG_ADAPTATION, "# Show TextureAdaptation ?", false)
+UI_BOOL(PARAM_DEBUG_APERTURE, "# Show TextureAperture ?", false)
+UI_BOOL(PARAM_DEBUG_ORIGINAL, "# Show TextureOriginal ?", false)
+UI_BOOL(PARAM_DEBUG_LINEARIZED, "# Convert to linear ?", false)
+UI_BOOL(PARAM_DEBUG_GAMMAED, "# Convert to gamma ?", false)
+UI_FLOAT(PARAM_DEBUG_GAMMA_FACTOR, "Debug Gamma Factor", 0.1, 5.0, 2.2)
 
 UI_WHITESPACE(1)
 
@@ -100,7 +110,7 @@ UI_WHITESPACE(5)
 UI_SEPARATOR_CUSTOM("Tonemap Settings :")
 
 UI_SPLITTER(4)
-UI_BOOL(PARAM_TONEMAP_PROCESS_ENABLE, "# Use Frostbyte Tonemap Processing ?", false)
+UI_BOOL(PARAM_TONEMAP_PROCESS_ENABLE, "# Use Frostbite Tonemap Processing ?", false)
 UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "0.25 | Compression Lower Bound", 0.0, 1.0, 0.25)
 UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "0.70 | Desaturation Amount", 0.0, 1.0, 0.7)
 UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0.6)
@@ -111,6 +121,8 @@ UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 10.0, 4.0
 UI_WHITESPACE(7)
 UI_BOOL(PARAM_TONEMAP_GAMMA_ENABLE, "# Use Gamma Factor ?", false)
 UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "1.00 | Gamma Factor", 0.0, 2.0, 1.1)
+
+UI_WHITESPACE(8)
 
 
 
@@ -159,12 +171,12 @@ Texture2D TextureColor; // HDR color, in multipass mode it's previous pass 32 bi
 Texture2D TextureBloom; // Vanilla or ENB bloom
 Texture2D TextureLens; // ENB lens FX
 Texture2D TextureDepth; // Scene depth
-Texture2D TextureAdaptation; // Vanilla or ENB adaptation
+Texture2D TextureAdaptation; // Vanilla or ENB adaptation, R32F HDR red channel only
 Texture2D TextureAperture; // This frame aperture 1*1 R32F HDR red channel only. computed in depth of field shader file
 // Texture2D TexturePalette; // enbpalette texture, if loaded and enabled in [colorcorrection].
 
 // Textures of multipass techniques
-// Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
+Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
 // Temporary render targets
 // Texture2D RenderTargetRGBA32; // R8G8B8A8 32 bit LDR format
 // Texture2D RenderTargetRGBA64; // R16B16G16A16 64 bit LDR format
@@ -190,6 +202,7 @@ SamplerState Sampler1
 
 
 ////////// AGCC
+// # - Credits to firemanaf and LonelyKitsune for the basis of my changes
 float3 applyAGCC(float3 color)
 {
 	float grey = dot(color, LUM_709) * PARAM_AGCC_MIDDLE_GREY_MULTIPLIER;
@@ -227,7 +240,8 @@ float3 applyTonemap(float3 color, float treshold)
 	return lcompress(color.rgb, treshold) * rcp(lcompress(PARAM_TONEMAP_SECONDARY_WHITEPOINT, treshold));
 }
 
-float3 applyFrostbyteDisplayMapper(float3 color)
+// # - Credits to DICE teams and The Sandvich Maker before my changes
+float3 applyFrostbiteDisplayMapper(float3 color)
 {
 	float3 ictcp = rgb2ictcp(color);
 
@@ -310,9 +324,29 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	//	- bloom the ENB bloom texture (rgb)
 	//	- adaptation the ENB adaptation coefficient
 	float4 color = TextureColor.Sample(Sampler0, coords.xy).rgba; // HDR scene color
-	float3 lens = TextureLens.Sample(Sampler1, coords.xy).rgb;
 	float3 bloom = TextureBloom.Sample(Sampler1, coords.xy).rgb;
+	float3 lens = TextureLens.Sample(Sampler1, coords.xy).rgb;
+	float3 depth = TextureDepth.Sample(Sampler0, coords.xy).rgb;
 	float adaptation = TextureAdaptation.Sample(Sampler0, coords.xy).x;
+	float aperture = TextureAperture.Sample(Sampler0, coords.xy).x;
+	float4 original = TextureOriginal.Sample(Sampler0, coords.xy).rgba;
+
+	// Debug modes :
+	if (PARAM_DEBUG_ENABLE)
+	{
+		float4 debugres;
+		if (PARAM_DEBUG_COLOR) debugres.rgb = color.rgb;
+		if (PARAM_DEBUG_BLOOM) debugres.rgb = bloom.rgb;
+		if (PARAM_DEBUG_LENS) debugres.rgb = lens.rgb;
+		if (PARAM_DEBUG_DEPTH) debugres.rgb = depth.rgb;
+		if (PARAM_DEBUG_ADAPTATION) debugres.rgb = adaptation.xxx;
+		if (PARAM_DEBUG_APERTURE) debugres.rgb = aperture.xxx;
+		if (PARAM_DEBUG_ORIGINAL) debugres.rgb = original.rgb;
+
+		return float4(debugres.rgb, 1.0);
+	}
+
+	if (PARAM_DEBUG_LINEARIZED) color.rgb = pow(color.rgb, PARAM_DEBUG_GAMMA_FACTOR);
 
 	bloom.rgb = bloom.rgb - color.rgb;
 	bloom.rgb = max(bloom.rgb, 0.0);
@@ -324,7 +358,6 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	color.rgb += lens * ENB_LENS_AMOUNT;
 	color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
 
-	// TODO Check what the difference would be between RGB and iCtCp
 	// Base adjustments
 	color.rgb *= PARAM_BASE_BRIGHTNESS;
 	color.rgb += 0.00001;
@@ -341,12 +374,13 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	if (PARAM_AGCC_ENABLE) color.rgb = applyAGCC(color.rgb);
 
 	// Tonemapping
-	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbyteDisplayMapper(color.rgb);
+	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbiteDisplayMapper(color.rgb);
 	if (PARAM_TONEMAP_GAMMA_ENABLE) color.rgb = gamma(color.rgb, PARAM_TONEMAP_GAMMA_FACTOR);
-	res.rgb = saturate(color).rgb;
+
+	if (PARAM_DEBUG_GAMMAED) color.rgb = pow(color.rgb, 1.0 / PARAM_DEBUG_GAMMA_FACTOR);
 
 	// Return
-	res.a = 1.0;
+	res = float4(saturate(color).rgb, 1.0);
 	return res;
 }
 
