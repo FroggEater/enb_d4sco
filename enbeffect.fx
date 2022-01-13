@@ -49,6 +49,7 @@ float4 BloomSize;
 ////////// INCLUDES
 #include "D4SCO/ReforgedUI.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
+#include "D4SCO/d4sco_constants.fxh"
 
 
 
@@ -70,10 +71,10 @@ UI_BOOL(PARAM_DEBUG_DEPTH, "# Show TextureDepth ?", false)
 UI_BOOL(PARAM_DEBUG_ADAPTATION, "# Show TextureAdaptation ?", false)
 UI_BOOL(PARAM_DEBUG_APERTURE, "# Show TextureAperture ?", false)
 UI_BOOL(PARAM_DEBUG_ORIGINAL, "# Show TextureOriginal ?", false)
+UI_MESSAGE(DebugMessage, "Gradient Settings :")
 UI_BOOL(PARAM_DEBUG_GRADIENT, "# Show Gradient ?", false)
 UI_BOOL(PARAM_DEBUG_LINEARIZED, "# Convert to linear ?", false)
 UI_BOOL(PARAM_DEBUG_GAMMAED, "# Convert to gamma ?", false)
-UI_FLOAT(PARAM_DEBUG_GAMMA_FACTOR, "Debug Gamma Factor", 0.1, 5.0, 2.2)
 
 UI_WHITESPACE(1)
 
@@ -119,11 +120,8 @@ UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0,
 UI_WHITESPACE(6)
 UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "# Use Secondary Tonemap ?", false)
 UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 10.0, 4.0)
-UI_WHITESPACE(7)
-UI_BOOL(PARAM_TONEMAP_GAMMA_ENABLE, "# Use Gamma Factor ?", false)
-UI_FLOAT(PARAM_TONEMAP_GAMMA_FACTOR, "1.00 | Gamma Factor", 0.0, 2.0, 1.1)
 
-UI_WHITESPACE(8)
+UI_WHITESPACE(7)
 
 
 
@@ -351,7 +349,7 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	}
 
 	if (PARAM_DEBUG_GRADIENT) color.rgb = float3(1.0, 1.0, 1.0) * coords.x;
-	if (PARAM_DEBUG_LINEARIZED) color.rgb = pow(color.rgb, PARAM_DEBUG_GAMMA_FACTOR);
+	if (PARAM_DEBUG_LINEARIZED) color.rgb = lin(color.rgb);
 
 	bloom.rgb = bloom.rgb - color.rgb;
 	bloom.rgb = max(bloom.rgb, 0.0);
@@ -380,9 +378,8 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 
 	// Tonemapping
 	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbiteDisplayMapper(color.rgb);
-	if (PARAM_TONEMAP_GAMMA_ENABLE) color.rgb = gamma(color.rgb, PARAM_TONEMAP_GAMMA_FACTOR);
 
-	if (PARAM_DEBUG_GAMMAED) color.rgb = pow(color.rgb, 1.0 / PARAM_DEBUG_GAMMA_FACTOR);
+	if (PARAM_DEBUG_GAMMAED) color.rgb = gamma(color.rgb);
 
 	// Return
 	res = float4(saturate(color).rgb, 1.0);

@@ -6,6 +6,11 @@
 
 
 
+////////// INCLUDES
+#include "d4sco_constants.fxh"
+
+
+
 ////////// CONSTANTS
 static const float PI = 3.1415926535897932384626433832795;
 static const float rPI = 1.0 / PI;
@@ -64,8 +69,8 @@ int divideup(int a, int b)
 
 
 // Miscellaneous operators
-float3 lin(float3 color, float g) { return pow(color.rgb, g); }
-float3 gamma(float3 color, float g) { return pow(color.rgb, 1.0 / g); }
+float3 lin(float3 color) { return pow(color.rgb, _GAMMA); }
+float3 gamma(float3 color) { return pow(color.rgb, 1.0 / _GAMMA); }
 
 
 // Exponential luma compression
