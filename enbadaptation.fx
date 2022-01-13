@@ -1,8 +1,8 @@
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
-// ENBSeries TES Skyrim SE hlsl DX11 format, example adaptation
-// visit http://enbdev.com for updates
-// Author: Boris Vorontsov
-//++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+////////// D4SCO Adaptation - 1.0
+////////// by FroggEater
+//////////
+////////// > visit http://enbdev.com for ENBSeries updates
+////////// > visit the Nexus for D4SCO updates
 
 
 

@@ -70,6 +70,7 @@ UI_BOOL(PARAM_DEBUG_DEPTH, "# Show TextureDepth ?", false)
 UI_BOOL(PARAM_DEBUG_ADAPTATION, "# Show TextureAdaptation ?", false)
 UI_BOOL(PARAM_DEBUG_APERTURE, "# Show TextureAperture ?", false)
 UI_BOOL(PARAM_DEBUG_ORIGINAL, "# Show TextureOriginal ?", false)
+UI_BOOL(PARAM_DEBUG_GRADIENT, "# Show Gradient ?", false)
 UI_BOOL(PARAM_DEBUG_LINEARIZED, "# Convert to linear ?", false)
 UI_BOOL(PARAM_DEBUG_GAMMAED, "# Convert to gamma ?", false)
 UI_FLOAT(PARAM_DEBUG_GAMMA_FACTOR, "Debug Gamma Factor", 0.1, 5.0, 2.2)
@@ -343,9 +344,13 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 		if (PARAM_DEBUG_APERTURE) debugres.rgb = aperture.xxx;
 		if (PARAM_DEBUG_ORIGINAL) debugres.rgb = original.rgb;
 
+		if (PARAM_DEBUG_LINEARIZED) debugres.rgb = pow(debugres.rgb, PARAM_DEBUG_GAMMA_FACTOR);
+		if (PARAM_DEBUG_GAMMAED) debugres.rgb = pow(debugres.rgb, 1.0 / PARAM_DEBUG_GAMMA_FACTOR);
+
 		return float4(debugres.rgb, 1.0);
 	}
 
+	if (PARAM_DEBUG_GRADIENT) color.rgb = float3(1.0, 1.0, 1.0) * coords.x;
 	if (PARAM_DEBUG_LINEARIZED) color.rgb = pow(color.rgb, PARAM_DEBUG_GAMMA_FACTOR);
 
 	bloom.rgb = bloom.rgb - color.rgb;
@@ -360,7 +365,7 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 
 	// Base adjustments
 	color.rgb *= PARAM_BASE_BRIGHTNESS;
-	color.rgb += 0.00001;
+	color.rgb += DELTA6;
 
 	float3 ncolor = normalize(color.rgb);
 	float3 ncoeff = color.rgb / ncolor.rgb;

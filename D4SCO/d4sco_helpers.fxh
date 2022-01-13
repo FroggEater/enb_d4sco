@@ -64,10 +64,8 @@ int divideup(int a, int b)
 
 
 // Miscellaneous operators
-float3 gamma(float3 color, float g)
-{
-  return pow(color.rgb, g);
-}
+float3 lin(float3 color, float g) { return pow(color.rgb, g); }
+float3 gamma(float3 color, float g) { return pow(color.rgb, 1.0 / g); }
 
 
 // Exponential luma compression
