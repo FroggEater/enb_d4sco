@@ -104,13 +104,16 @@ float4 border(float4 vec, float a, float b)
 // Perceptual lightness - input color should be in linear RGB
 float lightness(float lum)
 {
-  if (lum <= (216.0 / 24389.0)) return lum * (24389.0 / 27.0);
-  else return pow(lum, 1.0 / 3.0) * 116.0 - 16.0;
+  float L;
+  if (lum <= (216.0 / 24389.0)) L = lum * (24389.0 / 27.0);
+  else L = pow(lum, 1.0 / 3.0) * 116.0 - 16.0;
+
+  return smoothstep(0.0, 100.0, L);
 }
 
 float lightness(float3 color)
 {
-  float lum = dot(color, LUM_709);
+  float lum = dot(color.rgb, LUM_709);
   return lightness(lum);
 }
 

@@ -126,23 +126,10 @@ UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
 UI_WHITESPACE(2)
-UI_BOOL(PARAM_ADAPTATION_COMPLEX_ENABLE, "# Use Complex Adaptation ?", false)
-UI_FLOAT(PARAM_ADAPTATION_COMPLEX_WEIGHT, "1.00 | Complex Adaptation Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_ADAPTATION_COMPLEX_MIN, "0.01 | Complex Adaptation Influence (min)", 0.01, 10.0, 0.01)
-UI_FLOAT(PARAM_ADAPTATION_COMPLEX_MAX, "1.00 | Complex Adaptation Influence (max)", 0.0, 10.0, 1.0)
-UI_WHITESPACE(3)
-UI_BOOL(PARAM_ADAPTATION_PER_PIXEL_ENABLE, "# Use Per Pixel Difference ?", false)
-UI_FLOAT(PARAM_ADAPTATION_N_FACTOR, "1.25 | n Factor Value", 0.7, 2.0, 1.25)
-UI_FLOAT(PARAM_ADAPTATION_PHOTO_B, "2.00 | Photopic B Value", 0.0, 7.5, 2.00)
-UI_FLOAT(PARAM_ADAPTATION_SCOTO_B, "5.83 | Scotopic B Value", 0.0, 7.5, 5.83)
-UI_FLOAT(PARAM_ADAPTATION_DISP_B, "35.0 | Display B Value", 25.0, 50.0, 35.0)
-UI_FLOAT(PARAM_ADAPTATION_NIGHT_WEIGHT, "1.00 | Night Time Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_ADAPTATION_INTERIOR_WEIGHT, "0.50 | Interior Weight", 0.0, 1.0, 0.5)
-UI_WHITESPACE(4)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "0.50 | Adaptation Denominator (min)", 0.0, 2.0, 0.5)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "1.00 | Adaptation Denominator Multiplier", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "0.50 | Adaptation (min)", 0.0, 2.0, 0.5)
+UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "1.00 | Adaptation (max)", 0.0, 2.0, 1.0)
 
-UI_WHITESPACE(5)
+UI_WHITESPACE(3)
 
 #define UI_CATEGORY AGCC
 UI_SEPARATOR_CUSTOM("AGCC Settings :")
@@ -152,12 +139,12 @@ UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
 UI_FLOAT(PARAM_AGCC_BRIGHTNESS_WEIGHT, "1.00 | AGCC Exposure Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_CONTRAST_WEIGHT, "1.00 | AGCC Contrast Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_SATURATION_WEIGHT, "1.00 | AGCC Saturation Weight", 0.0, 1.0, 1.0)
-UI_WHITESPACE(6)
+UI_WHITESPACE(4)
 UI_FLOAT(PARAM_AGCC_TINT_WEIGHT, "1.00 | AGCC Tint Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_FADE_WEIGHT, "1.00 | AGCC Fade Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_MIDDLE_GREY_MULTIPLIER, "1.00 | Middle Grey Multiplier", 0.0, 2.0, 1.0)
 
-UI_WHITESPACE(7)
+UI_WHITESPACE(5)
 
 #define UI_CATEGORY Tonemap
 UI_SEPARATOR_CUSTOM("Tonemap Settings :")
@@ -168,11 +155,11 @@ UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "0.25 | Compression Lower Bound", 0.0
 UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "0.70 | Desaturation Amount", 0.0, 1.0, 0.7)
 UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0.6)
 UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0, 0.3)
-UI_WHITESPACE(8)
+UI_WHITESPACE(6)
 UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "# Use Secondary Tonemap ?", false)
 UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 10.0, 4.0)
 
-UI_WHITESPACE(9)
+UI_WHITESPACE(7)
 
 
 
@@ -195,142 +182,10 @@ Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
 // Texture2D RenderTargetR32F; // R32F 32 bit HDR format with red channel only
 // Texture2D RenderTargetRGB32F; // 32 bit HDR format without alpha
 
-SamplerState Sampler0
-{
-	Filter = MIN_MAG_MIP_POINT;
-	AddressU = Clamp;
-	AddressV = Clamp;
-};
-
-SamplerState Sampler1
-{
-	Filter = MIN_MAG_MIP_LINEAR;
-	AddressU = Clamp;
-	AddressV = Clamp;
-};
 
 
-
+////////// ADD-ONS
 #include "D4SCO/enbeffect_AdaptTool.fxh"
-
-
-
-////////// ADAPTATION
-float getAdaptIntensity(float3 color, float l)
-{
-	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
-	float ENB_INTERIOR_FACTOR = EInteriorFactor;
-
-	float lum;
-	float fgrey;
-
-	float3 grey = float3(0.5, 0.5, 0.5);
-
-	float plum = dot(color.rgb, P_LUM);
-	float slum = dot(color.rgb, S_LUM);
-	float pgrey = dot(grey.rgb, P_LUM);
-	float sgrey = dot(grey.rgb, S_LUM);
-
-	lum = lerp(slum, plum, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
-	lum = lerp(lum, slum, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
-	fgrey = lerp(sgrey, pgrey, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
-	fgrey = lerp(pgrey, sgrey, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
-
-	if (PARAM_ADAPTATION_PER_PIXEL_ENABLE) fgrey = lum;
-	float nl = normalize(l);
-	return smoothstep(0.0, 0.5, abs(fgrey - nl));
-}
-
-float getSigma(float intensity)
-{
-	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
-	float ENB_INTERIOR_FACTOR = EInteriorFactor;
-
-	float a = 0.69;
-	float pB = PARAM_ADAPTATION_PHOTO_B;
-	float sB = PARAM_ADAPTATION_SCOTO_B;
-
-	float DN_B = lerp(sB, pB, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
-	float B = lerp(DN_B, sB, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
-
-	return pow(intensity, a) * B;
-}
-
-float getDispSigma(float intensity)
-{
-	float a = 0.69;
-	float B = PARAM_ADAPTATION_DISP_B;
-
-	return pow(intensity, a) * B;
-}
-
-float getMesopicFactor(float intensity)
-{
-	float A = 3.0 * sq((log(intensity) + 2.0) / 2.6);
-	float B = 2.0 * cb((log(intensity) + 2.0) / 2.6);
-
-	return A - B;
-}
-
-float getResponse(float3 color, float l)
-{
-	float n = PARAM_ADAPTATION_N_FACTOR;
-
-	float i = getAdaptIntensity(color, l);
-	float s = getSigma(i);
-
-	return pow(l, n) / (pow(l, n) + pow(s, n));
-}
-
-float3 getReversePhotoResp(float mes, float dsigma, float resp)
-{
-	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
-	float ENB_INTERIOR_FACTOR = EInteriorFactor;
-
-	float n = PARAM_ADAPTATION_N_FACTOR;
-	float3 rphresp = mes * dsigma * pow(resp / (1.0 - resp), 1.0 / n);
-	rphresp = lerp(0.0, rphresp, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
-	rphresp = lerp(rphresp, 0.0, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
-
-	return rphresp;
-}
-
-float3 getReverseScotoResp(float mes, float dsigma, float resp)
-{
-	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
-	float ENB_INTERIOR_FACTOR = EInteriorFactor;
-
-	float n = PARAM_ADAPTATION_N_FACTOR;
-	float3 rscresp = (1.0 - mes) * dsigma * pow(resp / (1.0 - resp), 1.0 / n);
-	rscresp = lerp(rscresp, 0.0, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
-	rscresp = lerp(0.0, rscresp, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
-
-	return rscresp;
-}
-
-float3 getReverseResponse(float3 color, float l)
-{
-	float i = getAdaptIntensity(color, l);
-	float s = getSigma(i);
-
-	float m = getMesopicFactor(i);
-	float ds = getDispSigma(i);
-	float r = getResponse(s, l);
-
-	float3 presp = getReversePhotoResp(m, ds, r);
-	float3 sresp = getReverseScotoResp(m, ds, r);
-
-	return float3(
-		presp.r,
-		sresp.r,
-		presp.r + sresp.r
-	);
-}
-
-float3 applyAdaptation(float3 color, float l)
-{
-	// TODO
-}
 
 
 
@@ -456,14 +311,15 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	//	- lens the ENB lens texture (rgb)
 	//	- bloom the ENB bloom texture (rgb)
 	//	- adaptation the ENB adaptation coefficient
-	float4 color = TextureColor.Sample(Sampler0, coords.xy).rgba; // HDR scene color
-	float3 bloom = TextureBloom.Sample(Sampler1, coords.xy).rgb;
-	float3 lens = TextureLens.Sample(Sampler1, coords.xy).rgb;
-	float3 depth = TextureDepth.Sample(Sampler0, coords.xy).rrr;
-	float3 adaptation = TextureAdaptation.Sample(Sampler0, coords.xy).rrr;
-	float3 aperture = TextureAperture.Sample(Sampler0, coords.xy).rrr;
-	float4 original = TextureOriginal.Sample(Sampler0, coords.xy).rgba;
+	float4 color = TextureColor.Sample(PointSampler, coords.xy).rgba; // HDR scene color
+	float3 bloom = TextureBloom.Sample(LinearSampler, coords.xy).rgb;
+	float3 lens = TextureLens.Sample(LinearSampler, coords.xy).rgb;
+	float3 depth = TextureDepth.Sample(PointSampler, coords.xy).rrr;
+	float3 adaptation = TextureAdaptation.Sample(PointSampler, coords.xy).rrr;
+	float3 aperture = TextureAperture.Sample(PointSampler, coords.xy).rrr;
+	float4 original = TextureOriginal.Sample(PointSampler, coords.xy).rgba;
 
+	// TODO - Put into a separate helper, like kingeric's adaptation tool
 	// Debug modes :
 	if (PARAM_DEBUG_ENABLE && !PARAM_ADAPTATION_COMPLEX_ENABLE)
 	{
@@ -492,33 +348,11 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	color.rgb += lens * ENB_LENS_AMOUNT;
 
 	// Adaptation
-	if (PARAM_ADAPTATION_COMPLEX_ENABLE)
-	{
-		if (PARAM_DEBUG_ENABLE)
-		{
-			color.rgb = lerp(
-				getResponse(color.rgb, adaptation.r),
-				getReverseResponse(color.rgb, adaptation.r),
-				PARAM_ADAPTATION_COMPLEX_WEIGHT
-			);
-			if (PARAM_BASE_LINEAR_ENABLE) color.rgb = linear2srgb(color.rgb);
-			color = float4(saturate(color).rgb, 1.0);
-			return color;
-		}
-		float3 response = getReverseResponse(color.rgb, adaptation.r);
-		float photoresp = response.x;
-		float scotoresp = response.y;
-		float totresp = response.z;
-
-		float3 adjusted = color.rgb + (color.rgb / clamp(totresp, PARAM_ADAPTATION_COMPLEX_MIN, PARAM_ADAPTATION_COMPLEX_MAX));
-
-		color.rgb = lerp(color.rgb, adjusted.rgb, PARAM_ADAPTATION_COMPLEX_WEIGHT);
-	}
-	else
-	{
-		// color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
-		color.rgb /= adaptation.rrr;
-	}
+	float adapt = max3(adaptation);
+	// color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
+	// color.rgb /= adaptation.rrr;
+	// adapt = clamp(adapt, 0.0, 50.0);
+	color.rgb /= (adapt * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN + DELTA6);
 
 	// Base adjustments
 	color.rgb *= PARAM_BASE_BRIGHTNESS;
@@ -557,14 +391,14 @@ float4 PS_DrawOriginal(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	scaleduv=max(scaleduv, 0.0);
 	scaleduv=min(scaleduv, Params01[6].zy);
 
-	color=TextureColor.Sample(Sampler0, IN.txcoord0.xy); //HDR scene color
+	color=TextureColor.Sample(PointSampler, IN.txcoord0.xy); //HDR scene color
 
 	float4	r0, r1, r2, r3;
 	r1.xy=scaleduv;
 	r0.xyz = color.xyz;
 	if (0.5<=Params01[0].x) r1.xy=IN.txcoord0.xy;
-	r1.xyz = TextureBloom.Sample(Sampler1, r1.xy).xyz;
-	r2.xy = TextureAdaptation.Sample(Sampler1, IN.txcoord0.xy).xy; //in skyrimse it two component
+	r1.xyz = TextureBloom.Sample(LinearSampler, r1.xy).xyz;
+	r2.xy = TextureAdaptation.Sample(LinearSampler, IN.txcoord0.xy).xy; //in skyrimse it two component
 
 	r0.w=dot(float3(2.125000e-001, 7.154000e-001, 7.210000e-002), r0.xyz);
 	r0.w=max(r0.w, 1.000000e-005);

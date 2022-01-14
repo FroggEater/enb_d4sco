@@ -101,51 +101,36 @@ UI_WHITESPACE(1)
 UI_SEPARATOR_CUSTOM("Base Adaptation Settings :")
 
 UI_SPLITTER(2)
-UI_BOOL(PARAM_BASE_LINEAR_ENABLE, "# Use Linear Color Space ?", false)
+UI_BOOL(PARAM_BASE_LINEAR_ENABLE, "# Use Linear Color Space ?", true)
+UI_BOOL(PARAM_BASE_LIGHTNESS_ENABLE, "# Use Perceptual Lightness ?", true)
 
 UI_WHITESPACE(2)
-
-#define UI_CATEGORY Luminance
-UI_SEPARATOR_CUSTOM("Luminance Calculation Settings :")
-
-UI_SPLITTER(3)
-UI_BOOL(PARAM_LUM_COMPLEX_ENABLE, "# Use Complex Luminance ?", false)
-UI_FLOAT(PARAM_LUM_NIGHT_WEIGHT, "1.00 | Night Time Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_LUM_INTERIOR_WEIGHT, "0.50 | Interior Weight", 0.0, 1.0, 0.5)
-
-UI_WHITESPACE(3)
 
 #define UI_CATEGORY Histogram
 UI_SEPARATOR_CUSTOM("Histogram Calculation Settings :")
 
 UI_SPLITTER(4)
-UI_FLOAT(PARAM_HIST_BIAS, "0.00 | Adaptation Bias", -1.0, 1.0, 0.0)
-UI_FLOAT(PARAM_HIST_LUM_MIN, "-5.00 | Scene Luminance (min)", -10.0, 0.0, -5.0)
-UI_FLOAT(PARAM_HIST_LUM_MAX, "2.50 | Scene Luminance (max)", 1.0, 5.0, 2.5)
-UI_FLOAT(PARAM_HIST_EXP_MIN, "0.25 | Brightness Treshold (min)", 0.0, 1.0, 0.25)
-UI_FLOAT(PARAM_HIST_EXP_MAX, "0.75 | Brightness Treshold (max)", 0.0, 1.0, 0.75)
-UI_FLOAT(PARAM_HIST_PERCENT_LOW, "0.50 | Adaptation Low Percent", 0.0, 1.0, 0.5)
-UI_FLOAT(PARAM_HIST_PERCENT_HIGH, "0.50 | Adaptation High Percent", 0.0, 1.0, 0.5)
+UI_FLOAT(PARAM_HIST_BIAS, "0.0000 | Adaptation Bias", -1.0, 1.0, 0.0)
+UI_FLOAT(PARAM_HIST_LUM_MIN, "-10.00 | Scene Luminance (min)", -10.0, -5.0, -10.0)
+UI_FLOAT(PARAM_HIST_LUM_MAX, "2.5000 | Scene Luminance (max)", 0.0, 5.0, 2.5)
+UI_FLOAT(PARAM_HIST_PERCENT_LOW, "0.5000 | Adaptation Low Percent", 0.5, 0.75, 0.5)
+UI_FLOAT(PARAM_HIST_PERCENT_HIGH, "0.7500 | Adaptation High Percent", 0.5, 0.75, 0.75)
+
+UI_WHITESPACE(3)
+
+// #define UI_CATEGORY Luminance
+// UI_SEPARATOR_CUSTOM("Luminance Calculation Settings :")
+
+// UI_SPLITTER(3)
+// UI_BOOL(PARAM_LUM_COMPLEX_ENABLE, "# Use Complex Luminance ?", false)
+// UI_FLOAT(PARAM_LUM_NIGHT_WEIGHT, "1.00 | Night Time Weight", 0.0, 1.0, 1.0)
+// UI_FLOAT(PARAM_LUM_INTERIOR_WEIGHT, "0.50 | Interior Weight", 0.0, 1.0, 0.5)
 
 
 
 ////////// SOURCE TEXTURES
 Texture2D TextureCurrent; // 256x256
 Texture2D TexturePrevious;
-
-// SamplerState PointSampler
-// {
-// 	Filter = MIN_MAG_MIP_POINT;
-// 	AddressU = Clamp;
-// 	AddressV = Clamp;
-// };
-
-// SamplerState LinearSampler
-// {
-// 	Filter = MIN_MAG_MIP_LINEAR;
-// 	AddressU = Clamp;
-// 	AddressV = Clamp;
-// };
 
 
 
@@ -214,58 +199,16 @@ VS_OUTPUT_POST VS_Quad(VS_INPUT_POST IN)
 // Output > R32F
 float4	PS_Downsample(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 {
-	// float4 res;
-
 	float ENB_ADAPTATION_SENS = AdaptationParameters.z;
-
-	// float target = 16.0;
-
-	// // Downsampling 256x256 to 16x16
-	// // More complex blurring methods will affect the result if sensitivity is uncommented
-	// float2 pos;
-	// float2 coord;
-	// float3 curr;
-	// float3 currtotal = 0.0;
-	// float3 currmax = 0.0;
-	// float3 currmean = 0.0;
-	// const float	scale = 1.0 / target;
-	// const float	step = 1.0 / target;
-	// const float	halfstep = 0.5 / target;
-
-	// pos.x = -0.5 + halfstep;
-	// for (int x=0; x < target; x++)
-	// {
-	// 	pos.y = -0.5 + halfstep;
-	// 	for (int y = 0; y < target; y++)
-	// 	{
-	// 		coord = pos.xy * scale;
-
-	// 		// Corrected into linear space for proper luminance calculation
-	// 		curr = TextureCurrent.Sample(LinearSampler, IN.txcoord0.xy + coord.xy).rgb;
-	// 		if (PARAM_BASE_LINEAR_ENABLE) curr = srgb2linear(curr);
-	// 		currmax = max(currmax, curr);
-	// 		currtotal += curr;
-
-	// 		pos.y += step;
-	// 	}
-
-	// 	pos.x += step;
-	// }
-	// // Takes an average of the whole image
-	// currmean = currtotal / (target * target); 
-
-	// res.rgb = lerp(currmean, currmax, ENB_ADAPTATION_SENS).rgb;
-	// res.rgb = getLuminance(res.rgb);
-
-	// // Return
-	// // Note that res stays in linear space if the conversion is made
-	// return float4(res.rgb, 1.0);
 
 	float res = 0.0;
 	float4 coord = float4(IN.txcoord0.xyy, 1.0 / 128.0);
 
 	float3 colmax = float3(0.0, 0.0, 0.0);
 	float3 colerp = float3(0.0, 0.0, 0.0);
+	float lummax = 0.0;
+	float lumlerp = 0.0;
+	float lum;
 
 	for (int x = 0; x < 8; x++)
 	{
@@ -276,10 +219,12 @@ float4	PS_Downsample(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 			float4 color = TextureCurrent.Sample(LinearSampler, coord.xy);
 			if (PARAM_BASE_LINEAR_ENABLE) color.rgb = srgb2linear(color.rgb);
 
-			colmax = max(color.rgb, colmax);
-			colerp = lerp(color.rgb, colmax.rgb, ENB_ADAPTATION_SENS);
+			lum = PARAM_BASE_LIGHTNESS_ENABLE ? lightness(color.rgb) : dot(color.rgb, LUM_709);
 
-			res += lightness(colerp.rgb);
+			lummax = max(lum, lummax);
+			lumlerp = lerp(lum, lummax, ENB_ADAPTATION_SENS);
+
+			res += lumlerp;
 
 			coord.y += coord.w;
 		}
@@ -296,61 +241,7 @@ float4	PS_Downsample(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 // Input and output are both R32F
 float4	PS_Histogram(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 {
-	// float4 res;
-
-	// float ENB_ADAPTATION_SENS = AdaptationParameters.z;
 	float ENB_ADAPTATION_TIME = AdaptationParameters.w;
-	// float ENB_ADAPTATION_MIN = AdaptationParameters.x;
-	// float ENB_ADAPTATION_MAX = AdaptationParameters.y;
-
-	// float	prev = TexturePrevious.Sample(PointSampler, IN.txcoord0.xy).x;
-	// float target = 16.0;
-
-	// // Downsampling 16x16 to 1x1
-	// float2 pos;
-	// float curr;
-	// float currtotal = 0.0;
-	// float currmax = 0.0;
-	// float currmean = 0.0;
-	// const float	step = 1.0 / target;
-	// const float	halfstep = 0.5 / target;
-
-	// pos.x = -0.5 + halfstep;
-	// for (int x = 0; x < target; x++)
-	// {
-	// 	pos.y = -0.5 + halfstep;
-	// 	for (int y = 0; y < target; y++)
-	// 	{
-	// 		curr = TextureCurrent.Sample(LinearSampler, IN.txcoord0.xy + pos.xy).r;
-	// 		if (PARAM_BASE_LINEAR_ENABLE) curr = srgb2linear(curr);
-	// 		currmax = max(currmax, curr);
-	// 		currtotal += curr;
-
-	// 		pos.y += step;
-	// 	}
-
-	// 	pos.x += step;
-	// }
-	// currmean = currtotal / (target * target);
-
-	// // Adjust sensitivity to small areas on the screen
-	// currmean = lerp(currmean, currmax, ENB_ADAPTATION_SENS);
-
-	// // Smoothing by elapsed time
-	// res = lerp(prev, currmean, ENB_ADAPTATION_TIME);
-
-	// // Clamping to avoid bugs in PPFX, which has a much lower floating point precision
-	// // res = max(res, 0.001);
-	// // res = min(res, 16384.0);
-
-	// // Limit value (if ForceMinMaxValues is true)
-	// float	valmax = max3(res.rgb);
-	// float valcut = min(max(valmax, ENB_ADAPTATION_MIN), ENB_ADAPTATION_MAX);
-	// res *= valcut / (valmax + DELTA9);
-
-	// // Return
-	// // Note that res should still be in linear space if the conversion is made
-	// return float4(clamp(res.rgb, DELTA3, HDR), 1.0);
 
 	float4 coord = float4(1.0 / 32.0, 1.0 / 32.0, 1.0 / 32.0, 1.0 / 16.0);
 
@@ -401,9 +292,7 @@ float4	PS_Histogram(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	}
 
 	float coeff = sum2(anchor.xy) * 0.5 / 63.0 * (-1.0 * PARAM_HIST_LUM_MIN + PARAM_HIST_LUM_MAX) + PARAM_HIST_LUM_MIN;
-	float cmin = lerp(PARAM_HIST_LUM_MIN, PARAM_HIST_LUM_MAX, PARAM_HIST_EXP_MIN);
-	float cmax = lerp(PARAM_HIST_LUM_MIN, PARAM_HIST_LUM_MAX, PARAM_HIST_EXP_MAX);
-	coeff = pow(2.0, clamp(coeff, cmin, cmax) + PARAM_HIST_BIAS);
+	coeff = pow(2.0, clamp(coeff, PARAM_HIST_LUM_MIN, PARAM_HIST_LUM_MAX) + PARAM_HIST_BIAS);
 
 	float previous = TexturePrevious.Sample(PointSampler, 0.5).x;
 	return lerp(previous, coeff, ENB_ADAPTATION_TIME);
