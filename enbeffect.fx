@@ -38,90 +38,31 @@ float4 TimeOfDay2;
 float	ENightDayFactor;
 // 0 if in exterior space, 1 if in interior space
 float	EInteriorFactor;
-// x > width
-// y > 1 / width
-// z > aspect (= width / height)
-// w > 1 / aspect
-float4 BloomSize;
 
 
 
 ////////// INCLUDES
 #include "D4SCO/ReforgedUI.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
-#include "D4SCO/d4sco_constants.fxh"
 
 
 
-////////// PARAMETERS
-#define UI_SEPARATOR_MODE COLON
-#define UI_INDENT_MODE INDENT
+////////// GAME PARAMETERS
+// SSE parameters
+// 3 > x, z, w as contrast, saturation, brightness
+// 4 > r, g, b as tint color value, w as tint weight
+// 5 > x, y, z as fade color value, w as fade weight (only active during some FX)
+float4 Params01[7];
 
-#define UI_CATEGORY Credits
-
-UI_MESSAGE(Credits0, "D4SCO - Effects")
-UI_MESSAGE(Credits1, "by FroggEater")
-UI_MESSAGE(Credits2, "ver. 1.0")
-UI_SPLITTER(1)
-UI_BOOL(PARAM_DEBUG_ENABLE, "# Enable Debug Mode ?", false)
-UI_BOOL(PARAM_DEBUG_COLOR, "# Show TextureColor ?", false)
-UI_BOOL(PARAM_DEBUG_BLOOM, "# Show TextureBloom ?", false)
-UI_BOOL(PARAM_DEBUG_LENS, "# Show TextureLens ?", false)
-UI_BOOL(PARAM_DEBUG_DEPTH, "# Show TextureDepth ?", false)
-UI_BOOL(PARAM_DEBUG_ADAPTATION, "# Show TextureAdaptation ?", false)
-UI_BOOL(PARAM_DEBUG_APERTURE, "# Show TextureAperture ?", false)
-UI_BOOL(PARAM_DEBUG_ORIGINAL, "# Show TextureOriginal ?", false)
-UI_MESSAGE(DebugMessage, "Gradient Settings :")
-UI_BOOL(PARAM_DEBUG_GRADIENT, "# Show Gradient ?", false)
-UI_BOOL(PARAM_DEBUG_LINEARIZED, "# Convert to linear ?", false)
-UI_BOOL(PARAM_DEBUG_GAMMAED, "# Convert to gamma ?", false)
-
-UI_WHITESPACE(1)
-
-#define UI_CATEGORY Base
-UI_SEPARATOR_CUSTOM("Base Image Settings :")
-
-UI_SPLITTER(2)
-UI_FLOAT(PARAM_ADAPTATION_BORDER_MIN, "0.00 | Adaptation (min)", 0.0, 100.0, 0.0)
-UI_FLOAT(PARAM_ADAPTATION_BORDER_MAX, "50.0 | Adaptation (max)", 0.0, 100.0, 50.0)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "0.50 | Adaptation Divider (min)", 0.0, 1.0, 0.5)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "1.00 | Adaptation Divider (max)", 0.0, 1.0, 1.0)
-UI_WHITESPACE(2)
-UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
-UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
-UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
-
-UI_WHITESPACE(3)
-
-#define UI_CATEGORY AGCC
-UI_SEPARATOR_CUSTOM("AGCC Settings :")
-
-UI_SPLITTER(3)
-UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
-UI_FLOAT(PARAM_AGCC_BRIGHTNESS_WEIGHT, "1.00 | AGCC Exposure Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_CONTRAST_WEIGHT, "1.00 | AGCC Contrast Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_SATURATION_WEIGHT, "1.00 | AGCC Saturation Weight", 0.0, 1.0, 1.0)
-UI_WHITESPACE(4)
-UI_FLOAT(PARAM_AGCC_TINT_WEIGHT, "1.00 | AGCC Tint Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_FADE_WEIGHT, "1.00 | AGCC Fade Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_MIDDLE_GREY_MULTIPLIER, "1.00 | Middle Grey Multiplier", 0.0, 2.0, 1.0)
-
-UI_WHITESPACE(5)
-
-#define UI_CATEGORY Tonemap
-UI_SEPARATOR_CUSTOM("Tonemap Settings :")
-
-UI_SPLITTER(4)
-UI_BOOL(PARAM_TONEMAP_PROCESS_ENABLE, "# Use Frostbite Tonemap Processing ?", false)
-UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "0.25 | Compression Lower Bound", 0.0, 1.0, 0.25)
-UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "0.70 | Desaturation Amount", 0.0, 1.0, 0.7)
-UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0.6)
-UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0, 0.3)
-UI_WHITESPACE(6)
-UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "# Use Secondary Tonemap ?", false)
-UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 10.0, 4.0)
-
-UI_WHITESPACE(7)
+// ENB parameters
+// x > bloom amount
+// y > lens amount
+float4 ENBParams01;
+// x > width
+// y > 1 / width
+// z > aspect (= width / height)
+// w > 1 / aspect
+float4 BloomSize;
 
 
 
@@ -152,16 +93,84 @@ float4 tempInfo2;
 
 
 
-////////// GAME PARAMETERS
-// SSE parameters
-// 3 > x, z, w as contrast, saturation, brightness
-// 4 > r, g, b as tint color value, w as tint weight
-// 5 > x, y, z as fade color value, w as fade weight (only active during some FX)
-float4 Params01[7];
-// ENB parameters
-// x > bloom amount
-// y > lens amount
-float4 ENBParams01;
+////////// PARAMETERS
+#define UI_SEPARATOR_MODE COLON
+#define UI_INDENT_MODE INDENT
+
+#define UI_CATEGORY Credits
+
+UI_MESSAGE(Credits0, "D4SCO - Effects")
+UI_MESSAGE(Credits1, "by FroggEater")
+UI_MESSAGE(Credits2, "ver. 1.0")
+UI_SPLITTER(1)
+UI_BOOL(PARAM_DEBUG_ENABLE, "# Enable Debug Mode ?", false)
+UI_BOOL(PARAM_DEBUG_COLOR, "# Show TextureColor ?", false)
+UI_BOOL(PARAM_DEBUG_BLOOM, "# Show TextureBloom ?", false)
+UI_BOOL(PARAM_DEBUG_LENS, "# Show TextureLens ?", false)
+UI_BOOL(PARAM_DEBUG_DEPTH, "# Show TextureDepth ?", false)
+UI_BOOL(PARAM_DEBUG_ADAPTATION, "# Show TextureAdaptation ?", false)
+UI_BOOL(PARAM_DEBUG_APERTURE, "# Show TextureAperture ?", false)
+UI_BOOL(PARAM_DEBUG_ORIGINAL, "# Show TextureOriginal ?", false)
+UI_BOOL(PARAM_DEBUG_GRADIENT, "# Show Gradient ?", false)
+
+UI_WHITESPACE(1)
+
+#define UI_CATEGORY Base
+UI_SEPARATOR_CUSTOM("Base Image Settings :")
+
+UI_SPLITTER(2)
+UI_BOOL(PARAM_BASE_LINEAR_ENABLE, "# Use Linear Color Space ?", false)
+UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
+UI_WHITESPACE(2)
+UI_BOOL(PARAM_ADAPTATION_COMPLEX_ENABLE, "# Use Complex Adaptation ?", false)
+UI_FLOAT(PARAM_ADAPTATION_COMPLEX_WEIGHT, "1.00 | Complex Adaptation Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_ADAPTATION_COMPLEX_MIN, "0.01 | Complex Adaptation Influence (min)", 0.01, 10.0, 0.01)
+UI_FLOAT(PARAM_ADAPTATION_COMPLEX_MAX, "1.00 | Complex Adaptation Influence (max)", 0.0, 10.0, 1.0)
+UI_WHITESPACE(3)
+UI_BOOL(PARAM_ADAPTATION_PER_PIXEL_ENABLE, "# Use Per Pixel Difference ?", false)
+UI_FLOAT(PARAM_ADAPTATION_N_FACTOR, "1.25 | n Factor Value", 0.7, 2.0, 1.25)
+UI_FLOAT(PARAM_ADAPTATION_PHOTO_B, "2.00 | Photopic B Value", 0.0, 7.5, 2.00)
+UI_FLOAT(PARAM_ADAPTATION_SCOTO_B, "5.83 | Scotopic B Value", 0.0, 7.5, 5.83)
+UI_FLOAT(PARAM_ADAPTATION_DISP_B, "35.0 | Display B Value", 25.0, 50.0, 35.0)
+UI_FLOAT(PARAM_ADAPTATION_NIGHT_WEIGHT, "1.00 | Night Time Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_ADAPTATION_INTERIOR_WEIGHT, "0.50 | Interior Weight", 0.0, 1.0, 0.5)
+UI_WHITESPACE(4)
+UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "0.50 | Adaptation Denominator (min)", 0.0, 2.0, 0.5)
+UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "1.00 | Adaptation Denominator Multiplier", 0.0, 2.0, 1.0)
+
+UI_WHITESPACE(5)
+
+#define UI_CATEGORY AGCC
+UI_SEPARATOR_CUSTOM("AGCC Settings :")
+
+UI_SPLITTER(3)
+UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
+UI_FLOAT(PARAM_AGCC_BRIGHTNESS_WEIGHT, "1.00 | AGCC Exposure Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_CONTRAST_WEIGHT, "1.00 | AGCC Contrast Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_SATURATION_WEIGHT, "1.00 | AGCC Saturation Weight", 0.0, 1.0, 1.0)
+UI_WHITESPACE(6)
+UI_FLOAT(PARAM_AGCC_TINT_WEIGHT, "1.00 | AGCC Tint Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_FADE_WEIGHT, "1.00 | AGCC Fade Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_MIDDLE_GREY_MULTIPLIER, "1.00 | Middle Grey Multiplier", 0.0, 2.0, 1.0)
+
+UI_WHITESPACE(7)
+
+#define UI_CATEGORY Tonemap
+UI_SEPARATOR_CUSTOM("Tonemap Settings :")
+
+UI_SPLITTER(4)
+UI_BOOL(PARAM_TONEMAP_PROCESS_ENABLE, "# Use Frostbite Tonemap Processing ?", false)
+UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "0.25 | Compression Lower Bound", 0.0, 1.0, 0.25)
+UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "0.70 | Desaturation Amount", 0.0, 1.0, 0.7)
+UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0.6)
+UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0, 0.3)
+UI_WHITESPACE(8)
+UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "# Use Secondary Tonemap ?", false)
+UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 10.0, 4.0)
+
+UI_WHITESPACE(9)
 
 
 
@@ -197,6 +206,123 @@ SamplerState Sampler1
 	AddressU = Clamp;
 	AddressV = Clamp;
 };
+
+
+
+////////// ADAPTATION
+float getAdaptIntensity(float3 color, float l)
+{
+	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
+	float ENB_INTERIOR_FACTOR = EInteriorFactor;
+
+	float lum;
+	float grey = float(0.5, 0.5, 0.5);
+
+	float plum = dot(color.rgb, P_LUM);
+	float slum = dot(color.rgb, S_LUM);
+	float pgrey = dot(grey.rgb, P_LUM);
+	float sgrey = dot(grey.rgb, S_LUM);
+
+	lum = lerp(slum, plum, ENB_NIGHT_DAY_FACTOR * PARAM_LUM_NIGHT_WEIGHT);
+	lum = lerp(lum, slum, ENB_INTERIOR_FACTOR * PARAM_LUM_INTERIOR_WEIGHT);
+	grey = lerp(sgrey, pgrey, ENB_NIGHT_DAY_FACTOR * PARAM_LUM_NIGHT_WEIGHT);
+	grey = lerp(pgrey, sgrey, ENB_INTERIOR_FACTOR * PARAM_LUM_INTERIOR_WEIGHT);
+
+	if (PARAM_ADAPTATION_PER_PIXEL_ENABLE) grey = lum;
+	float nl = normalize(l);
+	return smoothstep(0.0, 0.5, abs(grey - nl));
+}
+
+float getSigma(float intensity)
+{
+	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
+	float ENB_INTERIOR_FACTOR = EInteriorFactor;
+
+	float a = 0.69;
+	float pB = PARAM_ADAPTATION_PHOTO_B;
+	float sB = PARAM_ADAPTATION_SCOTO_B;
+
+	float DN_B = lerp(sB, pB, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
+	float B = lerp(DN_B, sB, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
+
+	return pow(intensity, a) * B;
+}
+
+float getDispSigma(float intensity)
+{
+	float a = 0.69;
+	float B = PARAM_ADAPTATION_DISP_B;
+
+	return pow(intensity, a) * B;
+}
+
+float getMesopicFactor(float intensity)
+{
+	float A = 3.0 * sq((log(intensity) + 2.0) / 2.6);
+	float B = 2.0 * cb((log(intensity) + 2.0) / 2.6);
+
+	return A - B;
+}
+
+float getResponse(float3 color, float l)
+{
+	float n = PARAM_ADAPTATION_N_FACTOR;
+
+	float i = getAdaptIntensity(color, l);
+	float s = getSigma(i);
+
+	return pow(l, n) / (pow(l, n) + pow(s, n));
+}
+
+float3 getReversePhotoResp(float mes, float dsigma, float resp)
+{
+	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
+	float ENB_INTERIOR_FACTOR = EInteriorFactor;
+
+	float n = PARAM_ADAPTATION_N_FACTOR;
+	float3 rphresp = mes * dsigma * pow(resp / (1.0 - resp), 1.0 / n);
+	rphresp = lerp(0.0, rphresp, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
+	rphresp = lerp(rphresp, 0.0, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
+
+	return rphresp;
+}
+
+float3 getReverseScotoResp(float mes, float dsigma, float resp)
+{
+	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
+	float ENB_INTERIOR_FACTOR = EInteriorFactor;
+
+	float n = PARAM_ADAPTATION_N_FACTOR;
+	float3 rscresp = (1.0 - mes) * dsigma * pow(resp / (1.0 - resp), 1.0 / n);
+	rscresp = lerp(rscresp, 0.0, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
+	rscresp = lerp(0.0, rscresp, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
+
+	return rscresp;
+}
+
+float3 getReverseResponse(float3 color, float l)
+{
+	float i = getAdaptIntensity(color, l);
+	float s = getSigma(i);
+
+	float m = getMesopicFactor(i);
+	float ds = getDispSigma(i);
+	float r = getResponse(s, l);
+
+	float3 presp = getReversePhotoResp(m, ds, r);
+	float3 sresp = getReverseScotoResp(m, ds, r);
+
+	return float3(
+		presp.r,
+		sresp.r,
+		presp.r + sresp.r
+	);
+}
+
+float3 applyAdaptation(float3 color, float l)
+{
+	// TODO
+}
 
 
 
@@ -322,44 +448,66 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	//	- lens the ENB lens texture (rgb)
 	//	- bloom the ENB bloom texture (rgb)
 	//	- adaptation the ENB adaptation coefficient
-	float4 color = TextureColor.Sample(Sampler0, coords.xy).rgba; // HDR scene color
+	float4 color = TextureOriginal.Sample(Sampler0, coords.xy).rgba; // HDR scene color
 	float3 bloom = TextureBloom.Sample(Sampler1, coords.xy).rgb;
 	float3 lens = TextureLens.Sample(Sampler1, coords.xy).rgb;
-	float3 depth = TextureDepth.Sample(Sampler0, coords.xy).rgb;
-	float adaptation = TextureAdaptation.Sample(Sampler0, coords.xy).x;
-	float aperture = TextureAperture.Sample(Sampler0, coords.xy).x;
+	float3 depth = TextureDepth.Sample(Sampler0, coords.xy).rrr;
+	float3 adaptation = TextureAdaptation.Sample(Sampler0, coords.xy).rrr;
+	float3 aperture = TextureAperture.Sample(Sampler0, coords.xy).rrr;
 	float4 original = TextureOriginal.Sample(Sampler0, coords.xy).rgba;
 
 	// Debug modes :
-	if (PARAM_DEBUG_ENABLE)
+	if (PARAM_DEBUG_ENABLE && !PARAM_ADAPTATION_COMPLEX_ENABLE)
 	{
 		float4 debugres;
 		if (PARAM_DEBUG_COLOR) debugres.rgb = color.rgb;
 		if (PARAM_DEBUG_BLOOM) debugres.rgb = bloom.rgb;
 		if (PARAM_DEBUG_LENS) debugres.rgb = lens.rgb;
 		if (PARAM_DEBUG_DEPTH) debugres.rgb = depth.rgb;
-		if (PARAM_DEBUG_ADAPTATION) debugres.rgb = adaptation.xxx;
-		if (PARAM_DEBUG_APERTURE) debugres.rgb = aperture.xxx;
+		if (PARAM_DEBUG_ADAPTATION) debugres.rgb = adaptation.rgb;
+		if (PARAM_DEBUG_APERTURE) debugres.rgb = aperture.rgb;
 		if (PARAM_DEBUG_ORIGINAL) debugres.rgb = original.rgb;
-
-		if (PARAM_DEBUG_LINEARIZED) debugres.rgb = pow(debugres.rgb, PARAM_DEBUG_GAMMA_FACTOR);
-		if (PARAM_DEBUG_GAMMAED) debugres.rgb = pow(debugres.rgb, 1.0 / PARAM_DEBUG_GAMMA_FACTOR);
 
 		return float4(debugres.rgb, 1.0);
 	}
 
 	if (PARAM_DEBUG_GRADIENT) color.rgb = float3(1.0, 1.0, 1.0) * coords.x;
-	if (PARAM_DEBUG_LINEARIZED) color.rgb = lin(color.rgb);
+	if (PARAM_BASE_LINEAR_ENABLE) color.rgb = srgb2linear(color.rgb);
 
 	bloom.rgb = bloom.rgb - color.rgb;
 	bloom.rgb = max(bloom.rgb, 0.0);
 
-	adaptation = clamp(adaptation, PARAM_ADAPTATION_BORDER_MIN, PARAM_ADAPTATION_BORDER_MAX);
-
 	// Mixing
 	color.rgb += bloom * ENB_BLOOM_AMOUNT;
 	color.rgb += lens * ENB_LENS_AMOUNT;
-	color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
+
+	// Adaptation
+	if (PARAM_ADAPTATION_COMPLEX_ENABLE)
+	{
+		if (PARAM_DEBUG_ENABLE)
+		{
+			color.rgb = lerp(
+				getResponse(color.rgb, adaptation.r),
+				getReverseResponse(color.rgb, adaptation.r),
+				PARAM_ADAPTATION_COMPLEX_WEIGHT
+			);
+			if (PARAM_BASE_LINEAR_ENABLE) color.rgb = linear2srgb(color.rgb);
+			color = float4(saturate(color).rgb, 1.0);
+			return color;
+		}
+		float3 response = getReverseResponse(color.rgb, adaptation.r);
+		float photoresp = response.x;
+		float scotoresp = response.y;
+		float totresp = response.z;
+
+		float3 adjusted = color.rgb + (color.rgb / clamp(totresp, PARAM_ADAPTATION_COMPLEX_MIN, PARAM_ADAPTATION_COMPLEX_MAX));
+
+		color.rgb = lerp(color.rgb, adjusted.rgb, PARAM_ADAPTATION_COMPLEX_WEIGHT);
+	}
+	else
+	{
+		color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
+	}
 
 	// Base adjustments
 	color.rgb *= PARAM_BASE_BRIGHTNESS;
@@ -379,9 +527,8 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	// Tonemapping
 	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbiteDisplayMapper(color.rgb);
 
-	if (PARAM_DEBUG_GAMMAED) color.rgb = gamma(color.rgb);
-
 	// Return
+	if (PARAM_BASE_LINEAR_ENABLE) color.rgb = linear2srgb(color.rgb);
 	res = float4(saturate(color).rgb, 1.0);
 	return res;
 }
