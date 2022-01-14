@@ -104,6 +104,8 @@ UI_MESSAGE(Credits1, "by FroggEater")
 UI_MESSAGE(Credits2, "ver. 1.0")
 UI_SPLITTER(1)
 UI_BOOL(PARAM_DEBUG_ENABLE, "# Enable Debug Mode ?", false)
+UI_BOOL(PARAM_DEBUG_LINEAR_ENABLE, "# Gamma Correct Debug Input ?", false)
+UI_MESSAGE(DebugToggles, "Individual toggles :")
 UI_BOOL(PARAM_DEBUG_COLOR, "# Show TextureColor ?", false)
 UI_BOOL(PARAM_DEBUG_BLOOM, "# Show TextureBloom ?", false)
 UI_BOOL(PARAM_DEBUG_LENS, "# Show TextureLens ?", false)
@@ -209,6 +211,10 @@ SamplerState Sampler1
 
 
 
+#include "D4SCO/enbeffect_AdaptTool.fxh"
+
+
+
 ////////// ADAPTATION
 float getAdaptIntensity(float3 color, float l)
 {
@@ -216,21 +222,23 @@ float getAdaptIntensity(float3 color, float l)
 	float ENB_INTERIOR_FACTOR = EInteriorFactor;
 
 	float lum;
-	float grey = float(0.5, 0.5, 0.5);
+	float fgrey;
+
+	float3 grey = float3(0.5, 0.5, 0.5);
 
 	float plum = dot(color.rgb, P_LUM);
 	float slum = dot(color.rgb, S_LUM);
 	float pgrey = dot(grey.rgb, P_LUM);
 	float sgrey = dot(grey.rgb, S_LUM);
 
-	lum = lerp(slum, plum, ENB_NIGHT_DAY_FACTOR * PARAM_LUM_NIGHT_WEIGHT);
-	lum = lerp(lum, slum, ENB_INTERIOR_FACTOR * PARAM_LUM_INTERIOR_WEIGHT);
-	grey = lerp(sgrey, pgrey, ENB_NIGHT_DAY_FACTOR * PARAM_LUM_NIGHT_WEIGHT);
-	grey = lerp(pgrey, sgrey, ENB_INTERIOR_FACTOR * PARAM_LUM_INTERIOR_WEIGHT);
+	lum = lerp(slum, plum, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
+	lum = lerp(lum, slum, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
+	fgrey = lerp(sgrey, pgrey, ENB_NIGHT_DAY_FACTOR * PARAM_ADAPTATION_NIGHT_WEIGHT);
+	fgrey = lerp(pgrey, sgrey, ENB_INTERIOR_FACTOR * PARAM_ADAPTATION_INTERIOR_WEIGHT);
 
-	if (PARAM_ADAPTATION_PER_PIXEL_ENABLE) grey = lum;
+	if (PARAM_ADAPTATION_PER_PIXEL_ENABLE) fgrey = lum;
 	float nl = normalize(l);
-	return smoothstep(0.0, 0.5, abs(grey - nl));
+	return smoothstep(0.0, 0.5, abs(fgrey - nl));
 }
 
 float getSigma(float intensity)
@@ -420,7 +428,7 @@ struct VS_OUTPUT_POST
 
 
 ////////// COMPUTE
-VS_OUTPUT_POST VS_D4Draw(VS_INPUT_POST IN)
+VS_OUTPUT_POST VS_Draw(VS_INPUT_POST IN)
 {
 	VS_OUTPUT_POST OUT;
 	float4 pos;
@@ -433,7 +441,7 @@ VS_OUTPUT_POST VS_D4Draw(VS_INPUT_POST IN)
 	return OUT;
 }
 
-float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
+float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 {
 	float4 res;
 
@@ -448,7 +456,7 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	//	- lens the ENB lens texture (rgb)
 	//	- bloom the ENB bloom texture (rgb)
 	//	- adaptation the ENB adaptation coefficient
-	float4 color = TextureOriginal.Sample(Sampler0, coords.xy).rgba; // HDR scene color
+	float4 color = TextureColor.Sample(Sampler0, coords.xy).rgba; // HDR scene color
 	float3 bloom = TextureBloom.Sample(Sampler1, coords.xy).rgb;
 	float3 lens = TextureLens.Sample(Sampler1, coords.xy).rgb;
 	float3 depth = TextureDepth.Sample(Sampler0, coords.xy).rrr;
@@ -468,7 +476,9 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 		if (PARAM_DEBUG_APERTURE) debugres.rgb = aperture.rgb;
 		if (PARAM_DEBUG_ORIGINAL) debugres.rgb = original.rgb;
 
-		return float4(debugres.rgb, 1.0);
+		if (PARAM_DEBUG_LINEAR_ENABLE) debugres.rgb = linear2srgb(debugres.rgb);
+		debugres.a = coords.x;
+		return saturate(float4(lerp(color.rgb, debugres.rgb, debugres.a), 1.0));
 	}
 
 	if (PARAM_DEBUG_GRADIENT) color.rgb = float3(1.0, 1.0, 1.0) * coords.x;
@@ -506,7 +516,8 @@ float4 PS_D4Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	}
 	else
 	{
-		color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
+		// color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
+		color.rgb /= adaptation.rrr;
 	}
 
 	// Base adjustments
@@ -602,18 +613,28 @@ technique11 Draw <string UIName="D4SCO - Effects";>
 {
 	pass p0
 	{
-		SetVertexShader(CompileShader(vs_5_0, VS_D4Draw()));
-		SetPixelShader(CompileShader(ps_5_0, PS_D4Draw()));
+		SetVertexShader(CompileShader(vs_5_0, VS_Draw()));
+		SetPixelShader(CompileShader(ps_5_0, PS_Draw()));
 	}
 }
 
+technique11 DrawDebug <string UIName="D4SCO - Adaptation Debug";>
+{
+	pass p0
+	{
+		SetVertexShader(CompileShader(vs_5_0, VS_Draw()));
+		SetPixelShader(CompileShader(ps_5_0, PS_Draw()));
+	}
 
+	pass ADAPT_TOOL_PASS
+}
 
-// technique11 ORIGINALPOSTPROCESS <string UIName="Vanilla";> //do not modify this technique
-// {
-// 	pass p0
-// 	{
-// 		SetVertexShader(CompileShader(vs_5_0, VS_D4Draw()));
-// 		SetPixelShader(CompileShader(ps_5_0, PS_DrawOriginal()));
-// 	}
-// }
+// Do not modify
+technique11 ORIGINALPOSTPROCESS <string UIName="D4SCO - Vanilla";>
+{
+	pass p0
+	{
+		SetVertexShader(CompileShader(vs_5_0, VS_Draw()));
+		SetPixelShader(CompileShader(ps_5_0, PS_DrawOriginal()));
+	}
+}

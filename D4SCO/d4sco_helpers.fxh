@@ -7,7 +7,14 @@
 
 
 ////////// SAMPLERS
-SamplerState Sampler
+SamplerState PointSampler
+{
+	Filter = MIN_MAG_MIP_POINT;
+	AddressU = Clamp;
+	AddressV = Clamp;
+};
+
+SamplerState LinearSampler
 {
 	Filter = MIN_MAG_MIP_LINEAR;
 	AddressU = Clamp;
@@ -53,24 +60,13 @@ float max2(float2 v) { return max(v.x, v.y); }
 float max3(float3 v) { return max(max2(v.xy), v.z); }
 float max4(float4 v) { return max(max3(v.xyz), v.w); }
 
+float sum2(float2 v) { return v.x + v.y; }
+float sum3(float3 v) { return sum2(v.xy) + v.z; }
+float sum4(float4 v) { return sum3(v.xyz) + v.w; }
+
 float sq(float x) { return pow(x, 2.0); }
 float cb(float x) { return pow(x, 3.0); }
 float qd(float x) { return pow(x, 4.0); }
-
-float sum(float2 v)
-{
-  return v.x + v.y;
-}
-
-float sum(float3 v)
-{
-  return sum(v.xy) + v.z;
-}
-
-float sum(float4 v)
-{
-  return sum(v.xyz) + v.w;
-}
 
 int divideup(int a, int b)
 {
@@ -102,64 +98,21 @@ float4 border(float4 vec, float a, float b)
   );
 }
 
-float3 blur(Texture2D TextureInput, float2 coordsrc, float inputSize,
-  float outputSize, float scale, float ratio)
-{
-  // Get inverted target size and correct by aspect ratio
-  float2 invsize = scale / inputSize;
-  invsize.y *= ratio;
-
-  float2 stepcnt = inputSize;
-  stepcnt *= invsize;
-  stepcnt = border(stepcnt, 2.0, 16.0);
-
-  int stepcntx = (int)(stepcnt.x + 0.4999);
-  int stepcnty = (int)(stepcnt.y + 0.4999);
-
-  stepcnt = 1.0 / stepcnt;
-
-  float4 curr = float4(0.0, 0.0, 0.0, DELTA6);
-  float2 pos;
-  float2 halfstep = 0.5 * stepcnt.xy;
-  invsize *= 2.0;
-
-  // Iterating over the input texture
-  pos.x = -0.5 + halfstep.x;
-  for (int x = 0; x < stepcntx; x++)
-  {
-    pos.y = -0.5 + halfstep.y;
-    for (int y = 0; y < stepcnty; y++)
-    {
-      float2 coord = pos.xy * invsize + coordsrc.xy;
-      float3 tmpcurr = TextureInput.Sample(Sampler, coord.xy).xyz;
-      float tmpweight;
-      float2 dpos = pos.xy * 2.0;
-      float rng = dot(dpos.xy, dpos.xy);
-
-      // A lot of pixel loss here, according to Boris
-      tmpweight = saturate(1001.0 - 1000.0 * rng); // Cutting a citcle
-      tmpweight *= saturate(1.0 - rng); // Softening
-
-      curr.xyz += tmpcurr.xyz * tmpweight;
-      curr.w += tmpweight;
-
-      pos.y += stepcnt.y;
-    }
-
-    pos.x += stepcnt.x;
-  }
-
-  curr.xyz *= 1.0 / curr.w;
-  return curr.xyz;
-}
 
 
 ////////// COLOR OPERATORS
+// Perceptual lightness - input color should be in linear RGB
+float lightness(float lum)
+{
+  if (lum <= (216.0 / 24389.0)) return lum * (24389.0 / 27.0);
+  else return pow(lum, 1.0 / 3.0) * 116.0 - 16.0;
+}
 
-
-// Miscellaneous operators
-float3 lin(float3 color) { return pow(color.rgb, GAMMA); }
-float3 gamma(float3 color) { return pow(color.rgb, 1.0 / GAMMA); }
+float lightness(float3 color)
+{
+  float lum = dot(color, LUM_709);
+  return lightness(lum);
+}
 
 
 // Exponential luma compression
