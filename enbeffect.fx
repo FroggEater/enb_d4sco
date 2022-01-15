@@ -126,6 +126,14 @@ UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
 UI_WHITESPACE(2)
+UI_BOOL(PARAM_ADAPTATION_EXPOSURE_ENABLE, "# Use Exposure Calculation ?", false)
+UI_BOOL(PARAM_CAMERA_AUTOMATIC_EXP_ENABLE, "# Use Automatic Exposure ?", false)
+UI_FLOAT(PARAM_CAMERA_K, "12.5 | K Constant", 0.0, 20.0, 12.5)
+UI_FLOAT(PARAM_CAMERA_Q, "0.65 | q Constant", 0.0, 1.0, 0.65)
+UI_FLOAT_FINE(PARAM_CAMERA_EXPOSURE, "0.00 | Exposure Compensation (f-stops)", -1.0, 1.0, 0.0, 0.2)
+UI_FLOAT_FINE(PARAM_CAMERA_APERTURE, "1.40 | Relative Aperture (f-stops)", 0.0, 20.0, 1.4, 0.2)
+UI_FLOAT(PARAM_CAMERA_SHUTTER, "125 | Shutter Time (s)", 1, 2000, 125)
+UI_INT(PARAM_CAMERA_SENSOR, "100 | Sensor Sensitivity (ISO)", 10, 1000, 100)
 UI_FLOAT(PARAM_ADAPTATION_MID_CUTOFF, "0.50 | Adaptation Mid Cutoff", 0.1, 0.9, 0.5)
 UI_FLOAT(PARAM_ADAPTATION_EXP_MULTIPLIER, "1.25 | Adaptation Brightening Mult.", 1.0, 5.0, 2.5)
 UI_FLOAT(PARAM_ADAPTATION_DRK_MULTIPLIER, "1.25 | Adaptation Darkening Mult.", 1.0, 5.0, 2.5)
@@ -168,7 +176,7 @@ Texture2D TextureBloom; // Vanilla or ENB bloom
 Texture2D TextureLens; // ENB lens FX
 Texture2D TextureDepth; // Scene depth
 Texture2D TextureAdaptation; // Vanilla or ENB adaptation, R32F HDR red channel only
-Texture2D TextureAperture; // This frame aperture 1*1 R32F HDR red channel only. computed in depth of field shader file
+Texture2D TextureAperture; // This frame aperture 1*1 R32F HDR red channel only, computed in enbdepthoffield.fx
 // Texture2D TexturePalette; // enbpalette texture, if loaded and enabled in [colorcorrection].
 
 // Textures of multipass techniques
@@ -185,6 +193,25 @@ Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
 
 ////////// ADD-ONS
 #include "D4SCO/enbeffect_AdaptTool.fxh"
+
+
+
+////////// ADAPTATION & EXPOSURE
+float computeEV100()
+{
+	return log2(sq(PARAM_CAMERA_APERTURE) / PARAM_CAMERA_SHUTTER * 100.0 / PARAM_CAMERA_SENSOR);
+}
+
+float computeLuminanceEV100(float L)
+{
+	return log2(L * PARAM_CAMERA_SENSOR / (PARAM_CAMERA_K + DELTA6));
+}
+
+float computeExposureFromEV100(float EV100)
+{
+	float maxL = 78.0 / (PARAM_CAMERA_SENSOR * PARAM_CAMERA_Q) * pow(2.0, EV100);
+	return 1.0 / maxL;
+}
 
 
 
@@ -352,10 +379,21 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	float adapt = max3(adaptation);
 	if (adapt > 0.0)
 	{
-		float3 lowlight = color.rgb * PARAM_ADAPTATION_EXP_MULTIPLIER;
-		float3 highlight = color.rgb / PARAM_ADAPTATION_DRK_MULTIPLIER;
-		color.rgb = lerp(lowlight, highlight, adapt);
+		if (PARAM_ADAPTATION_EXPOSURE_ENABLE)
+		{
+			float EV100 = PARAM_CAMERA_AUTOMATIC_EXP_ENABLE ?
+				computeLuminanceEV100(adapt) :
+				computeEV100();
+			float exposure = computeExposureFromEV100(EV100);
 
+			color.rgb *= exposure;
+		}
+		else
+		{
+			float3 lowlight = color.rgb * PARAM_ADAPTATION_EXP_MULTIPLIER;
+			float3 highlight = color.rgb / PARAM_ADAPTATION_DRK_MULTIPLIER;
+			color.rgb = lerp(lowlight, highlight, adapt);
+		}
 		// color.rgb /= ((adapt + PARAM_ADAPTATION_MID_CUTOFF) * PARAM_ADAPTATION_MULTIPLIER + DELTA6);
 	}
 
