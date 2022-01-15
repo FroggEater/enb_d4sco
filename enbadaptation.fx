@@ -118,14 +118,6 @@ UI_FLOAT(PARAM_HIST_PERCENT_HIGH, "0.7500 | Adaptation High Percent", 0.5, 0.75,
 
 UI_WHITESPACE(3)
 
-// #define UI_CATEGORY Luminance
-// UI_SEPARATOR_CUSTOM("Luminance Calculation Settings :")
-
-// UI_SPLITTER(3)
-// UI_BOOL(PARAM_LUM_COMPLEX_ENABLE, "# Use Complex Luminance ?", false)
-// UI_FLOAT(PARAM_LUM_NIGHT_WEIGHT, "1.00 | Night Time Weight", 0.0, 1.0, 1.0)
-// UI_FLOAT(PARAM_LUM_INTERIOR_WEIGHT, "0.50 | Interior Weight", 0.0, 1.0, 0.5)
-
 
 
 ////////// SOURCE TEXTURES
@@ -148,36 +140,6 @@ struct VS_OUTPUT_POST
 	float4 pos		: SV_POSITION;
 	float2 txcoord0	: TEXCOORD0;
 };
-
-
-
-////////// LUMINANCE CALCULATION
-// High ambient luminance
-float getPhotoLum(float3 color)
-{
-	return dot(color.rgb, P_LUM);
-}
-
-// Low ambient luminance
-float getScotoLum(float3 color)
-{
-	return dot(color.rgb, S_LUM);
-}
-
-float getLuminance(float3 color)
-{
-	if (!PARAM_LUM_COMPLEX_ENABLE) return dot(color, LUM_709);
-
-	float ENB_NIGHT_DAY_FACTOR = ENightDayFactor;
-	float ENB_INTERIOR_FACTOR = EInteriorFactor;
-
-	float3 plum = getPhotoLum(color);
-	float3 slum = getScotoLum(color);
-
-	float3 DN_lum = lerp(slum, plum, ENB_NIGHT_DAY_FACTOR * PARAM_LUM_NIGHT_WEIGHT);
-
-	return lerp(DN_lum, slum, ENB_INTERIOR_FACTOR * PARAM_LUM_INTERIOR_WEIGHT);
-}
 
 
 
@@ -204,11 +166,7 @@ float4	PS_Downsample(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	float res = 0.0;
 	float4 coord = float4(IN.txcoord0.xyy, 1.0 / 128.0);
 
-	float3 colmax = float3(0.0, 0.0, 0.0);
-	float3 colerp = float3(0.0, 0.0, 0.0);
 	float lummax = 0.0;
-	float lumlerp = 0.0;
-	float lum;
 
 	for (int x = 0; x < 8; x++)
 	{
@@ -218,13 +176,11 @@ float4	PS_Downsample(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 		{
 			float4 color = TextureCurrent.Sample(LinearSampler, coord.xy);
 			if (PARAM_BASE_LINEAR_ENABLE) color.rgb = srgb2linear(color.rgb);
-
-			lum = PARAM_BASE_LIGHTNESS_ENABLE ? lightness(color.rgb) : dot(color.rgb, LUM_709);
+			float lum = PARAM_BASE_LIGHTNESS_ENABLE ? lightness(color.rgb) : dot(color.rgb, LUM_709);
 
 			lummax = max(lum, lummax);
-			lumlerp = lerp(lum, lummax, ENB_ADAPTATION_SENS);
 
-			res += lumlerp;
+			res += lerp(lum, lummax, ENB_ADAPTATION_SENS);
 
 			coord.y += coord.w;
 		}
@@ -232,6 +188,7 @@ float4	PS_Downsample(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 		coord.x += coord.w;
 	}
 
+	// Return
 	return log2(res) - 6.0; // => log2(res / 64.0)
 }
 

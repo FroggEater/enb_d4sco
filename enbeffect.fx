@@ -126,8 +126,9 @@ UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
 UI_WHITESPACE(2)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MIN, "0.50 | Adaptation (min)", 0.0, 2.0, 0.5)
-UI_FLOAT(PARAM_ADAPTATION_DIVIDER_MAX, "1.00 | Adaptation (max)", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_ADAPTATION_MID_CUTOFF, "0.50 | Adaptation Mid Cutoff", 0.1, 0.9, 0.5)
+UI_FLOAT(PARAM_ADAPTATION_EXP_MULTIPLIER, "1.25 | Adaptation Brightening Mult.", 1.0, 5.0, 2.5)
+UI_FLOAT(PARAM_ADAPTATION_DRK_MULTIPLIER, "1.25 | Adaptation Darkening Mult.", 1.0, 5.0, 2.5)
 
 UI_WHITESPACE(3)
 
@@ -136,6 +137,7 @@ UI_SEPARATOR_CUSTOM("AGCC Settings :")
 
 UI_SPLITTER(3)
 UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
+UI_BOOL(PARAM_AGCC_LIGHTNESS_ENABLE, "# Use Perceptual Lightness ?", false)
 UI_FLOAT(PARAM_AGCC_BRIGHTNESS_WEIGHT, "1.00 | AGCC Exposure Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_CONTRAST_WEIGHT, "1.00 | AGCC Contrast Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_SATURATION_WEIGHT, "1.00 | AGCC Saturation Weight", 0.0, 1.0, 1.0)
@@ -155,11 +157,8 @@ UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "0.25 | Compression Lower Bound", 0.0
 UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "0.70 | Desaturation Amount", 0.0, 1.0, 0.7)
 UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0.6)
 UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0, 0.3)
-UI_WHITESPACE(6)
-UI_BOOL(PARAM_TONEMAP_SECONDARY_ENABLE, "# Use Secondary Tonemap ?", false)
-UI_FLOAT(PARAM_TONEMAP_SECONDARY_WHITEPOINT, "5.00 | Whitepoint", 0.0, 10.0, 4.0)
 
-UI_WHITESPACE(7)
+UI_WHITESPACE(6)
 
 
 
@@ -193,7 +192,8 @@ Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
 // # - Credits to firemanaf and LonelyKitsune for the basis of my changes
 float3 applyAGCC(float3 color)
 {
-	float grey = dot(color, LUM_709) * PARAM_AGCC_MIDDLE_GREY_MULTIPLIER;
+	float grey = PARAM_AGCC_LIGHTNESS_ENABLE ? lightness(color) : dot(color, LUM_709) ;
+	grey *= PARAM_AGCC_MIDDLE_GREY_MULTIPLIER;
 
 	// Game parameters
 	float IS_EXPOSURE = Params01[3].w;
@@ -205,6 +205,12 @@ float3 applyAGCC(float3 color)
 
 	float3 GAME_FADE_COLOR = Params01[5].xyz;
 	float GAME_FADE_WEIGHT = Params01[5].w;
+
+	if (PARAM_BASE_LINEAR_ENABLE)
+	{
+		GAME_TINT_COLOR = srgb2linear(GAME_TINT_COLOR);
+		GAME_FADE_COLOR = srgb2linear(GAME_FADE_COLOR);
+	}
 
 	// Logarithmic contrast and exposure, and saturation weighting
 	color.rgb = log2(lerp(color.rgb, color.rgb * IS_EXPOSURE + DELTA6, PARAM_AGCC_BRIGHTNESS_WEIGHT));
@@ -223,11 +229,6 @@ float3 applyAGCC(float3 color)
 
 
 ////////// TONEMAPPING
-float3 applyTonemap(float3 color, float treshold)
-{
-	return lcompress(color.rgb, treshold) * rcp(lcompress(PARAM_TONEMAP_SECONDARY_WHITEPOINT, treshold));
-}
-
 // # - Credits to DICE teams and The Sandvich Maker before my changes
 float3 applyFrostbiteDisplayMapper(float3 color)
 {
@@ -242,11 +243,11 @@ float3 applyFrostbiteDisplayMapper(float3 color)
 
 	// Hue-preserving remapping
 	float peak = max(color.r, max(color.g, color.b));
-	float mapped = PARAM_TONEMAP_SECONDARY_ENABLE ? applyTonemap(peak, treshold) : lcompress(peak, treshold);
+	float mapped = lcompress(peak, treshold);
 	float3 hpcolor = color * mapped / peak;
 
 	// Non hue-preserving remapping
-	float3 nhpcolor = PARAM_TONEMAP_SECONDARY_ENABLE ? applyTonemap(color, treshold) : lcompress(color, treshold);
+	float3 nhpcolor = lcompress(color, treshold);
 
 	// Mixing hue-preserving color with normal compressed one
 	color = lerp(nhpcolor, hpcolor, PARAM_TONEMAP_HS_MULTIPLIER);
@@ -321,7 +322,7 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 
 	// TODO - Put into a separate helper, like kingeric's adaptation tool
 	// Debug modes :
-	if (PARAM_DEBUG_ENABLE && !PARAM_ADAPTATION_COMPLEX_ENABLE)
+	if (PARAM_DEBUG_ENABLE)
 	{
 		float4 debugres;
 		if (PARAM_DEBUG_COLOR) debugres.rgb = color.rgb;
@@ -349,10 +350,14 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 
 	// Adaptation
 	float adapt = max3(adaptation);
-	// color.rgb += color.rgb / (adaptation * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN);
-	// color.rgb /= adaptation.rrr;
-	// adapt = clamp(adapt, 0.0, 50.0);
-	color.rgb /= (adapt * PARAM_ADAPTATION_DIVIDER_MAX + PARAM_ADAPTATION_DIVIDER_MIN + DELTA6);
+	if (adapt > 0.0)
+	{
+		float3 lowlight = color.rgb * PARAM_ADAPTATION_EXP_MULTIPLIER;
+		float3 highlight = color.rgb / PARAM_ADAPTATION_DRK_MULTIPLIER;
+		color.rgb = lerp(lowlight, highlight, adapt);
+
+		// color.rgb /= ((adapt + PARAM_ADAPTATION_MID_CUTOFF) * PARAM_ADAPTATION_MULTIPLIER + DELTA6);
+	}
 
 	// Base adjustments
 	color.rgb *= PARAM_BASE_BRIGHTNESS;
@@ -369,11 +374,13 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	// AGCC
 	if (PARAM_AGCC_ENABLE) color.rgb = applyAGCC(color.rgb);
 
+	// Return to sRGB space
+	if (PARAM_BASE_LINEAR_ENABLE) color.rgb = linear2srgb(color.rgb);
+
 	// Tonemapping
 	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbiteDisplayMapper(color.rgb);
 
 	// Return
-	if (PARAM_BASE_LINEAR_ENABLE) color.rgb = linear2srgb(color.rgb);
 	res = float4(saturate(color).rgb, 1.0);
 	return res;
 }
