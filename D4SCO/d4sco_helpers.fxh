@@ -60,6 +60,10 @@ float max2(float2 v) { return max(v.x, v.y); }
 float max3(float3 v) { return max(max2(v.xy), v.z); }
 float max4(float4 v) { return max(max3(v.xyz), v.w); }
 
+float min2(float2 v) { return min(v.x, v.y); }
+float min3(float3 v) { return min(min2(v.xy), v.z); }
+float min4(float4 v) { return min(min3(v.xyz), v.w); }
+
 float sum2(float2 v) { return v.x + v.y; }
 float sum3(float3 v) { return sum2(v.xy) + v.z; }
 float sum4(float4 v) { return sum3(v.xyz) + v.w; }
@@ -117,7 +121,6 @@ float lightness(float3 color)
   return lightness(lum);
 }
 
-
 // Exponential luma compression
 float lcompress(float x)
 {
@@ -138,7 +141,6 @@ float3 lcompress(float3 color, float treshold)
     lcompress(color.b, treshold)
   );
 }
-
 
 // RGB <> XYZ
 float3 rgb2xyz(float3 color)
@@ -161,7 +163,6 @@ float3 xyz2rgb(float3 color)
   return mul(mat, color);
 }
 
-
 // XYZ <> LMS (iCtCp Spec.)
 float3 xyz2lms(float3 color)
 {
@@ -182,7 +183,6 @@ float3 lms2xyz(float3 color)
   );
   return mul(mat, color);
 }
-
 
 // Linear <> sRGB
 float3 linear2srgb(float3 color)
@@ -206,7 +206,6 @@ float3 srgb2linear(float3 color)
     color.b < b ? (color.b / 12.92) : pow((color.b + a) / (1.0 + a), 2.4)
   );
 }
-
 
 // Linear <> PQ (ST.2084)
 float3 linear2pq(float3 color, const float maxpq)
@@ -232,7 +231,6 @@ float3 pq2linear(float3 color, const float maxpq)
 
   return lcolor;
 }
-
 
 // RGB <> iCtCp
 float3 rgb2ictcp(float3 color)

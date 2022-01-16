@@ -44,6 +44,7 @@ float	EInteriorFactor;
 ////////// INCLUDES
 #include "D4SCO/ReforgedUI.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
+#include "D4SCO/d4sco_macros.fxh"
 
 
 
@@ -192,7 +193,8 @@ Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
 
 
 ////////// ADD-ONS
-#include "D4SCO/enbeffect_AdaptTool.fxh"
+// #include "D4SCO/enbeffect_AdaptTool.fxh"
+#include "D4SCO/d4sco_debug.fxh"
 
 
 
@@ -497,7 +499,7 @@ technique11 Draw <string UIName="D4SCO - Effects";>
 	}
 }
 
-technique11 DrawDebug <string UIName="D4SCO - Adaptation Debug";>
+technique11 DrawDebug <string UIName="D4SCO - Debug";>
 {
 	pass p0
 	{
@@ -505,7 +507,11 @@ technique11 DrawDebug <string UIName="D4SCO - Adaptation Debug";>
 		SetPixelShader(CompileShader(ps_5_0, PS_Draw()));
 	}
 
-	pass ADAPT_TOOL_PASS
+	PASS_DEBUG_TEST
+
+	PASS_VISUALISATION(p11, 0, TextureOriginal, false)
+	PASS_VISUALISATION(p12, 1, TextureDepth, true)
+	PASS_VISUALISATION(p13, 2, TextureAdaptation, true)
 }
 
 // Do not modify
