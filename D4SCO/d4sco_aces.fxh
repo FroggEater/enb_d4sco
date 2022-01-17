@@ -296,6 +296,44 @@ float3 applyRRT(float3 color)
   return AP1toAP0(postColor);
 }
 
+// Assumes an AP1 input and directly outputs it as such
+float3 applyModifiedRRT(float3 color)
+{
+  // Computing glow
+  float saturation = RGBtoSaturation(color);
+  float yc = RGBtoYC(color);
+  float sigmoid = sigmoidShaper((saturation - 0.4) / 0.2);
+  float addedGlow = 1.0 + forwardGlow(yc, RRT_GLOW_GAIN * sigmoid, RRT_GLOW_MID);
+
+  color *= addedGlow;
+
+  // Adjusting red
+  float hue = RGBtoHue(color);
+  float centeredHue = centerHue(hue, RRT_RED_HUE);
+  float hueWeight = cubicBasisShaper(centeredHue, RRT_RED_WIDTH);
+
+  color.r += hueWeight * saturation * (RRT_RED_PIVOT - color.r) * (1.0 - RRT_RED_SCALE);
+
+  // ACES to RGB rendering space
+  // No conversion this time as we should already be in ACEScg, or AP1
+  float3 preColor = clamp(color, 0.0, HALF_MAX);
+
+  // Desaturation
+  // preColor = mul(RRT_SAT_MAT, preColor);
+  preColor = lerp(dot(preColor, AP1_TO_Y), preColor, RRT_SAT_FACTOR);
+
+  // Apply tonescale
+  float3 postColor = float3(
+    applySegmentedSplineC5(preColor.r),
+    applySegmentedSplineC5(preColor.g),
+    applySegmentedSplineC5(preColor.b)
+  );
+
+  // RGB rendering space to OCES
+  // We output AP1 instead of AP0, since ODT directly converts to AP1 afterwards
+  return postColor;
+}
+
 
 
 ////////// ODT - OCES > sRGB (D65, 100 nits)
@@ -335,12 +373,57 @@ float3 applyODT(float3 color)
   return saturate(linColor);
 }
 
+// Assumes an AP1 input
+float3 applyModifiedODT(float3 color)
+{
+  // Apply tonescale
+  float3 postColor = float3(
+    applySegmentedSplineC9(color.r),
+    applySegmentedSplineC9(color.g),
+    applySegmentedSplineC9(color.b)
+  );
+
+  // Scale luminance to linear color value and compensate luminance
+  // surroundDarkToDim also goes back to AP1
+  float3 linColor = float3(
+    YtoLinear(postColor.r, CINEMA_BLACK, CINEMA_WHITE),
+    YtoLinear(postColor.g, CINEMA_BLACK, CINEMA_WHITE),
+    YtoLinear(postColor.b, CINEMA_BLACK, CINEMA_WHITE)
+  );
+  linColor = surroundDarkToDim(linColor);
+
+  // Desaturation
+  // linColor = mul(ODT_SAT_MAT, linColor);
+  linColor = lerp(dot(linColor, AP1_TO_Y), linColor, ODT_SAT_FACTOR);
+
+  // Rendering space RGB to XYZ
+  float3 cieColor = AP1toXYZ(linColor);
+  cieColor = D60toD65(cieColor);
+
+  // Back to display primaries
+  linColor = XYZtosRGBl(cieColor);
+
+  // Return
+  return saturate(linColor);
+}
+
 
 
 ////////// FULL TRANSFORMS - ACES > sRGB (D65, 100 nits)
-// ACES2065-1 to Rec. 709 RGB
-float3 applyACESMapping(float3 color)
+// ACES2065-1 or ACEScg to Rec. 709 sRGBl
+float3 applyACESMapping(float3 color, bool modified = false)
 {
-  float3 rrtColor = applyRRT(color);
-  return applyODT(rrtColor);
+  float3 rrtColor;
+  float3 odtColor;
+  if (modified)
+  {
+    rrtColor = applyModifiedRRT(color);
+    odtColor = applyModifiedODT(rrtColor);
+  }
+  else
+  {
+    rrtColor = applyRRT(color);
+    odtColor = applyODT(rrtColor);
+  }
+  return odtColor;
 }

@@ -240,7 +240,11 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	{
 		color.rgb = sRGBtosRGBl(color.rgb);
 
-		if (PARAM_BASE_LINEAR_TO_ACES_ENABLE) color.rgb = sRGBltoAP0(color.rgb);
+		if (PARAM_BASE_LINEAR_TO_ACES_ENABLE)
+		{
+			if (PARAM_BASE_MODIFIED_ACES_ENABLE) color.rgb = sRGBltoAP1(color.rgb);
+			else color.rgb = sRGBltoAP0(color.rgb);
+		}
 	}
 
 	// Adaptation
@@ -284,7 +288,10 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 		PARAM_BASE_LINEAR_TO_ACES_ENABLE &&
 		PARAM_BASE_ACES_TO_LINEAR_ENABLE &&
 		PARAM_BASE_GAMMA_TO_LINEAR_ENABLE
-	) color.rgb = applyACESMapping(color.rgb);
+	) {
+		if (PARAM_BASE_MODIFIED_ACES_ENABLE) color.rgb = applyACESMapping(color.rgb, true);
+		else color.rgb = applyACESMapping(color.rgb);
+	}
 
 	// Return to sRGB space
 	if (PARAM_BASE_LINEAR_TO_GAMMA_ENABLE) color.rgb = sRGBltosRGB(color.rgb);
