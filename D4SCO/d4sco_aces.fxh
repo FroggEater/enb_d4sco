@@ -9,6 +9,27 @@
 
 
 
+////////// INCLUDES
+#include "d4sco_helpers.fxh"
+#include "d4sco_colorspaces.fxh"
+
+
+
+////////// STRUCTS
+struct SegmentedSplineParamsC5
+{
+  float lowCoefs[6];      // coefs for B-spline between minPoint and midPoint (log lum)
+  float highCoefs[6];     // coefs for B-spline between midPoint and maxPoint (log lum)
+  float slopeLow;         // log-log slope of low linear extension
+  float slopeHigh;        // log-log slope of high linear extension
+
+  float2 minPoint;        // all as (lum, lum)
+  float2 midPoint;
+  float2 maxPoint;
+}
+
+
+
 ////////// CONSTANTS
 static const float RRT_GLOW_GAIN = 0.05;
 static const float RRT_GLOW_MID = 0.08;
@@ -18,18 +39,32 @@ static const float RRT_RED_HUE = 0.0;
 static const float RRT_RED_WIDTH = 135.0;
 static const float RRT_SAT_FACTOR = 0.96;
 
+static const SegmentedSplineParamsC5 RRT_PARAMS =
+{
+  {-4.0000000000, -4.0000000000, -3.1573765773, -0.4852499958, 1.8477324706, 1.8477324706},
+  {-0.7185482425, 2.0810307172, 3.6681241237, 4.0000000000, 4.0000000000, 4.0000000000},
+  0.0,
+  0.0,
+  float2(0.18 * pow(2.0, -15.0), 0.0001),
+  float2(0.18, 4.8),
+  float2(0.18 * pow(2.0, 18.0), 10000.0)
+};
+
+static const float AP1_TO_Y = float3(-0.6636628587, 1.6153315917, 0.0167563477);
+
 
 
 ////////// UTILS
-// ACES utils
+// Specific conversions
 float RGBtoSaturation(float3 color)
 {
-  return (max(max3(color), DELTA6) - max(min3(color), DELTA6)) / max(max3(rgb), DELTA3);
+  // Converts RGB value to saturation as in HSV
+  return (max(max3(color), DELTA6) - max(min3(color), DELTA6)) / max(max3(color), DELTA6);
 }
 
 float RGBtoYC(float3 color, float radiusWeight = 1.75)
 {
-  // Convert RGB to a luminance proxy YC
+  // Converts RGB to a luminance proxy YC
   // YC ~ Y + K + chroma
   float chroma = sqrt(
     color.b * (color.b - color.g) +
@@ -42,11 +77,11 @@ float RGBtoYC(float3 color, float radiusWeight = 1.75)
 
 float RGBtoHueAngle(float3 color)
 {
-  // Convert RGB to a geometric hue angle in degrees
+  // Converts RGB to a geometric hue angle in degrees
   float res;
 
   // Returns NaN if the color is neutral
-  if (same3(color)) res = 0.0 / 0.0;
+  if (same3(color)) res = NAN;
   else res = (180.0 / PI) * atan2(sqrt(3.0) * (sub2(color.gb)), 2.0 * color.r - sub2(color.gb));
 
   if (res < 0.0) res += 360.0;
@@ -54,6 +89,7 @@ float RGBtoHueAngle(float3 color)
   return res;
 }
 
+// Hue controls
 float getCenteredHue(float hue, float centerHue)
 {
   float res = hue - centerHue;
@@ -74,6 +110,30 @@ float getUncenteredHue(float hue, float centerHue)
   return res;
 }
 
+// Glow functions
+float glowForward(float yc, float glowGain, float glowMid)
+{
+  float res;
+
+  if (yc <= (2.0 / 3.0 * glowMid)) res = glowGain;
+  else if (yc >= (2.0 * glowMid)) res = 0.0;
+  else res = glowGain * (glowMid / yc - 1.0 / 2.0);
+
+  return res;
+}
+
+float glowInvert(float yc, float glowGain, float glowMid)
+{
+  float res;
+
+  if (yc <= ((1.0 + glowGain) * 2.0 / 3.0 * glowMid)) res = (-1.0 * glowGain) / (1.0 + glowGain);
+  else if (yc >= (2.0 * glowMid)) res = 0.0;
+  else res = glowGain * (glowMid / yc - 1.0 / 2.0) / (glowGain / 2.0 - 1.0);
+
+  return res;
+}
+
+// Curve shapers
 float sigmoidShaper(float x)
 {
   // Was fabs instead of abs
@@ -101,30 +161,52 @@ float cubicBasisShaper(float x, float width)
   };
 
   float y = 0;
+  if (x > knots[0] && x < knots[4])
+  {
+    float coord = (x - knots[0]) * 4.0 / width;
+    int j = trunc(coord);
+    float t = coord - j;
+
+    float monomials[4] = {
+      cb(t),
+      sq(t),
+      t,
+      1.0
+    };
+
+    if (j <= 3 && j >= 0)
+      y = monomials[0] * mat[0][3 - j] +
+        monomials[1] * mat[1][3 - j] +
+        monomials[2] * mat[2][3 - j] +
+        monomials[3] * mat[3][3 - j];
+    else y = 0.0;
+  }
+
+  return y * 3.0 / 2.0;
+}
+
+float segmentedSplineShaper(float x, float params = RRT_PARAMS)
+{
+  static const int N_KNOTS_LOW = 4;
+  static const int N_KNOTS_HIGH = 4;
+
+  float logx = log10(max(x, FMIN));
 
   // TODO
 }
 
-float glowForward(float yc, float gain, float mid)
+// Saturation calculation
+// Needs AP1 to Y vector as input
+float3x3 getSaturationMatrix(float sat, float3 color)
 {
-  float res;
+  lum = AP1toY(color);
+  float factor = 1.0 - clamp(sat, 0.0, 1.0);
 
-  if (yc <= (2.0 / 3.0 * mid)) res = gain;
-  else if (yc >= (2.0 * mid)) res = 0.0;
-  else res = gain * (mid / yc - 1.0 / 2.0);
-
-  return res;
-}
-
-float glowInvert(float yc, float gain, float mid)
-{
-  float res;
-
-  if (yc <= ((1.0 + gain) * 2.0 / 3.0 * mid)) res = (-1.0 * gain) / (1.0 + gain);
-  else if (yc >= (2.0 * mid)) res = 0.0;
-  else res = gain * (mid / yc - 1.0 / 2.0) / (gain / 2.0 - 1.0);
-
-  return res;
+  return float3x3(
+    factor * lum.r + sat, factor * lum.g, factor * lum.b,
+    factor * lum.r, factor * lum.g + sat, factor * lum.b,
+    factor * lum.r, factor * lum.g, factor * lum.b + sat
+  );
 }
 
 
@@ -133,6 +215,9 @@ float glowInvert(float yc, float gain, float mid)
 // ACES (any) > RRT > sRGBl | D65 | AP <> Rec. 709 primaries
 float3 ACEStoOCES(float3 color)
 {
+  // Constants
+  static const float3x3 maxSatMat = getSaturationMatrix(RRT_SAT_FACTOR, AP1_TO_Y);
+
   // Computing glow
   float saturation = RGBtoSaturation(color);
   float ycInput = RGBtoYC(color);
@@ -147,5 +232,17 @@ float3 ACEStoOCES(float3 color)
   float hueCentered = getCenteredHue(hue, RRT_RED_HUE);
   float hueWeight = cubicBasisShaper(hueCentered, RRT_RED_WIDTH);
 
-  // TODO
+  color.r += hueWeight * saturation * (RRT_RED_PIVOT - color.r) * (1.0 - RRT_RED_SCALE);
+
+  // Going back from ACES to RGB
+  color = clamp3(color, 0.0, POSINF);
+
+  // Global desaturation
+  float3 precolor = clamp3(color, 0.0, FMAX);
+  precolor = mul(precolor, maxSatMat);
+
+  // Apply tonescale
+  float3 postcolor = applySegmentedSpline(precolor);
+
+  return AP1toAP0(postcolor);
 }

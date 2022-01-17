@@ -101,6 +101,76 @@ float3 ACEScgtosRGBl(float3 color)
   return mul(mat, color);
 }
 
+// sRGBl <> ACEScc | D65 | Rec. 709 <> AP1 primaries
+float3 sRGBltoACEScc(float3 color)
+{
+  static const float3x3 mat = float3x3(
+    0.6131324224, 0.3395380158, 0.0474166960,
+    0.0701243808, 0.9163940113, 0.0134515240,
+    0.0205876575, 0.1095745716, 0.8697854040
+  );
+  return mul(mat, color);
+}
+
+float3 ACEScctosRGBl(float3 color)
+{
+  static const float3x3 mat = float3x3(
+    1.7048586763, -0.6217160219, -0.0832993717,
+    -0.1300768242, 1.1407357748, -0.0105598017,
+    -0.0239640729, -0.1289755083, 1.1530140189
+  );
+  return mul(mat, color);
+}
+
+// AP0 <> AP1 | D60 | AP0 <> AP1 primaries
+float3 AP0toAP1(float3 color)
+{
+  static const float3x3 mat = float3x3(
+    1.4514393161, -0.2365107469, -0.2149285693,
+    -0.0765537733, 1.1762296998, -0.0996759265,
+    0.0083161484, -0.0060324498, 0.9977163014
+  );
+  return mul(mat, color);
+}
+
+float3 AP1toAP0(float3 color)
+{
+  static const float3x3 mat = float3x3(
+    0.6954522414, 0.1406786965, 0.1638690622,
+    0.0447945634, 0.8596711184, 0.0955343182,
+    -0.0055258826, 0.0040252103, 1.0015006723
+  );
+  return mul(mat, color);
+}
+
+// AP1 <> XYZ | D60 | From AP1 primaries
+float3 AP1toXYZ(float3 color)
+{
+  static const float3x3 mat = float3x3(
+    0.6624541811, 0.1340042065, 0.1561876870,
+    0.2722287168, 0.6740817658, 0.0536895174,
+    -0.0055746495, 0.0040607335, 1.0103391003
+  );
+  return mul(mat, color);
+}
+
+float3 XYZtoAP1(float3 color)
+{
+  static const float3x3 mat = float3x3(
+    1.6410233797, -0.3248032942, -0.2364246952,
+    -0.6636628587, 1.6153315917, 0.0167563477,
+    0.0117218943, -0.0082844420, 0.9883948585
+  );
+  return mul(mat, color);
+}
+
+// // AP1 <> Y (XYZ) | D60 | From AP1 primaries
+// float3 AP1toY(float3 color)
+// {
+//   static const float3 v = float3(-0.6636628587, 1.6153315917, 0.0167563477);
+//   return mul(v, color);
+// }
+
 
 
 /////////// FITMENT & TONEMAPPING

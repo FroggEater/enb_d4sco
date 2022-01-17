@@ -27,6 +27,12 @@ SamplerState LinearSampler
 static const float PI = 3.1415926535897932384626433832795;
 static const float rPI = 1.0 / PI;
 
+static const float NAN = 0.0 / 0.0;
+static const float POSINF = 1.0 / 0.0;
+static const float NEGINF = -1.0 / 0.0;
+static const float FMAX = FLT_MAX;
+static const float FMIN = FLT_MIN;
+
 static const float PQ_CONST_N = (2610.0 / 4096.0 / 4.0);
 static const float PQ_CONST_M = (2523.0 / 4096.0 * 128.0);
 static const float PQ_CONST_C1 = (3424.0 / 4096.0);
@@ -71,6 +77,10 @@ float sum4(float4 v) { return sum3(v.xyz) + v.w; }
 float sub2(float2 v) { return v.x - v.y; }
 float sub3(float3 v) { return sub2(v.xy) - v.z; }
 float sub4(float4 v) { return sub3(v.xyz) - v.w; }
+
+float2 clamp2(float2 v, float a, float b) { return float2(clamp(v.x, a, b), clamp(v.y, a, b)); }
+float3 clamp3(float3 v, float a, float b) { return float3(clamp2(v.xy, a, b), clamp(v.z, a, b)); }
+float4 clamp4(float4 v, float a, float b) { return float4(clamp3(v.xyz, a, b), clamp(v.w, a, b)); }
 
 float sq(float x) { return pow(x, 2.0); }
 float cb(float x) { return pow(x, 3.0); }
