@@ -7,8 +7,8 @@
 
 
 ////////// INCLUDES
-#include "d4sco_macros.fxh"
 #include "d4sco_helpers.fxh"
+#include "d4sco_macros.fxh"
 #include "ReforgedUI.fxh"
 
 

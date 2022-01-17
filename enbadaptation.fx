@@ -45,6 +45,8 @@ float	EInteriorFactor;
 #include "D4SCO/ReforgedUI.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
 
+#include "D4SCO/d4sco_colorspaces.fxh"
+
 
 
 ////////// GAME PARAMETERS
@@ -126,23 +128,6 @@ Texture2D TexturePrevious;
 
 
 
-////////// INPUT & OUTPUT STRUCTS
-// Input
-struct VS_INPUT_POST
-{
-	float3 pos		: POSITION;
-	float2 txcoord	: TEXCOORD0;
-};
-
-// Output
-struct VS_OUTPUT_POST
-{
-	float4 pos		: SV_POSITION;
-	float2 txcoord0	: TEXCOORD0;
-};
-
-
-
 ////////// COMPUTE
 VS_OUTPUT_POST VS_Quad(VS_INPUT_POST IN)
 {
@@ -175,7 +160,7 @@ float4	PS_Downsample(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 		for (int y = 0; y < 8; y++)
 		{
 			float4 color = TextureCurrent.Sample(LinearSampler, coord.xy);
-			if (PARAM_BASE_LINEAR_ENABLE) color.rgb = srgb2linear(color.rgb);
+			if (PARAM_BASE_LINEAR_ENABLE) color.rgb = sRGBtosRGBl(color.rgb);
 			float lum = PARAM_BASE_LIGHTNESS_ENABLE ? lightness(color.rgb) : dot(color.rgb, LUM_709);
 
 			lummax = max(lum, lummax);

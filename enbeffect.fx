@@ -42,11 +42,14 @@ float	EInteriorFactor;
 
 
 ////////// INCLUDES
+// Essentials
 #include "D4SCO/ReforgedUI.fxh"
-#include "D4SCO/d4sco_colorspaces.fxh"
-#include "D4SCO/d4sco_debug.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
 #include "D4SCO/d4sco_macros.fxh"
+
+// Utilities
+#include "D4SCO/d4sco_colorspaces.fxh"
+#include "D4SCO/d4sco_debug.fxh"
 
 
 
@@ -179,10 +182,10 @@ float3 applyAGCC(float3 color)
 	float3 GAME_FADE_COLOR = Params01[5].xyz;
 	float GAME_FADE_WEIGHT = Params01[5].w;
 
-	if (PARAM_BASE_LINEAR_ENABLE)
+	if (PARAM_BASE_GAMMA_TO_LINEAR_ENABLE)
 	{
-		GAME_TINT_COLOR = srgb2linear(GAME_TINT_COLOR);
-		GAME_FADE_COLOR = srgb2linear(GAME_FADE_COLOR);
+		GAME_TINT_COLOR = sRGBtosRGBl(GAME_TINT_COLOR);
+		GAME_FADE_COLOR = sRGBtosRGBl(GAME_FADE_COLOR);
 	}
 
 	// Logarithmic contrast and exposure, and saturation weighting

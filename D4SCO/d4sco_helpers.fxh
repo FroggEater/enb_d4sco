@@ -30,8 +30,6 @@ static const float rPI = 1.0 / PI;
 static const float NAN = 0.0 / 0.0;
 static const float POSINF = 1.0 / 0.0;
 static const float NEGINF = -1.0 / 0.0;
-static const float FMAX = FLT_MAX;
-static const float FMIN = FLT_MIN;
 
 static const float PQ_CONST_N = (2610.0 / 4096.0 / 4.0);
 static const float PQ_CONST_M = (2523.0 / 4096.0 * 128.0);
@@ -50,14 +48,10 @@ static const float DELTA2 = 1e-2;
 static const float DELTA1 = 1e-1;
 static const float HDR = 16384.0;
 
-static const float pst32 = 0.03125;
-static const float hst32 = 0.015625;
+// static const float pst32 = 0.03125;
+// static const float hst32 = 0.015625;
 
 static const float3 LUM_709 = float3(0.212656, 0.715158, 0.072186);
-static const float3 P_LUM = float3(0.256, 0.67, 0.065); // Photopic luminance
-static const float3 S_LUM = float3(-0.702, 1.039, 0.433); // Stocopic luminance
-
-static const float GAMMA = 2.2;
 
 
 
