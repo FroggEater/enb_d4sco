@@ -68,9 +68,17 @@ float sum2(float2 v) { return v.x + v.y; }
 float sum3(float3 v) { return sum2(v.xy) + v.z; }
 float sum4(float4 v) { return sum3(v.xyz) + v.w; }
 
+float sub2(float2 v) { return v.x - v.y; }
+float sub3(float3 v) { return sub2(v.xy) - v.z; }
+float sub4(float4 v) { return sub3(v.xyz) - v.w; }
+
 float sq(float x) { return pow(x, 2.0); }
 float cb(float x) { return pow(x, 3.0); }
 float qd(float x) { return pow(x, 4.0); }
+
+bool same2(float2 v) { return v.x == v.y; }
+bool same3(float3 v) { return same2(v.xy) && v.y == v.z; }
+bool same4(float4 v) { return same3(v.xyz) && v.z == v.w; }
 
 int divideup(int a, int b)
 {

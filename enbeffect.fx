@@ -45,6 +45,7 @@ float	EInteriorFactor;
 #include "D4SCO/ReforgedUI.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
 #include "D4SCO/d4sco_macros.fxh"
+#include "D4SCO/d4sco_colorspaces.fxh"
 
 
 
@@ -104,17 +105,6 @@ UI_MESSAGE(Credits0, "D4SCO - Effects")
 UI_MESSAGE(Credits1, "by FroggEater")
 UI_MESSAGE(Credits2, "ver. 1.0")
 UI_SPLITTER(1)
-UI_BOOL(PARAM_DEBUG_ENABLE, "# Enable Debug Mode ?", false)
-UI_BOOL(PARAM_DEBUG_LINEAR_ENABLE, "# Gamma Correct Debug Input ?", false)
-UI_MESSAGE(DebugToggles, "Individual toggles :")
-UI_BOOL(PARAM_DEBUG_COLOR, "# Show TextureColor ?", false)
-UI_BOOL(PARAM_DEBUG_BLOOM, "# Show TextureBloom ?", false)
-UI_BOOL(PARAM_DEBUG_LENS, "# Show TextureLens ?", false)
-UI_BOOL(PARAM_DEBUG_DEPTH, "# Show TextureDepth ?", false)
-UI_BOOL(PARAM_DEBUG_ADAPTATION, "# Show TextureAdaptation ?", false)
-UI_BOOL(PARAM_DEBUG_APERTURE, "# Show TextureAperture ?", false)
-UI_BOOL(PARAM_DEBUG_ORIGINAL, "# Show TextureOriginal ?", false)
-UI_BOOL(PARAM_DEBUG_GRADIENT, "# Show Gradient ?", false)
 
 UI_WHITESPACE(1)
 
@@ -122,7 +112,9 @@ UI_WHITESPACE(1)
 UI_SEPARATOR_CUSTOM("Base Image Settings :")
 
 UI_SPLITTER(2)
-UI_BOOL(PARAM_BASE_LINEAR_ENABLE, "# Use Linear Color Space ?", false)
+UI_BOOL(PARAM_BASE_GAMMA_TO_LINEAR_ENABLE, "# Use Linear Color Space ?", false)
+UI_BOOL(PARAM_BASE_ACESCG_ENABLE, "# Use ACEScg Color Space ?", false)
+UI_BOOL(PARAM_BASE_LINEAR_TO_GAMMA_ENABLE, "# Switch Back To Gamma Color Space ?", false)
 UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
@@ -168,6 +160,9 @@ UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0
 UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0, 0.3)
 
 UI_WHITESPACE(6)
+
+UI_BOOL(PARAM_ACES_ENABLE, "# Use ACES Tonemapping ?", false)
+UI_BOOL(PARAM_ACES_FAST_ENABLE, "# Use Faster ACES Approximation ?", false)
 
 
 
@@ -336,46 +331,14 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	float ENB_BLOOM_AMOUNT = ENBParams01.x;
 	float ENB_LENS_AMOUNT = ENBParams01.y;
 
-	// Respectively :
-	//  - color the original 64 bits HDR scene color (rgba)
-	//	- lens the ENB lens texture (rgb)
-	//	- bloom the ENB bloom texture (rgb)
-	//	- adaptation the ENB adaptation coefficient
-	float4 color = TextureColor.Sample(PointSampler, coords.xy).rgba; // HDR scene color
-	float3 bloom = TextureBloom.Sample(LinearSampler, coords.xy).rgb;
-	float3 lens = TextureLens.Sample(LinearSampler, coords.xy).rgb;
-	float3 depth = TextureDepth.Sample(PointSampler, coords.xy).rrr;
-	float3 adaptation = TextureAdaptation.Sample(PointSampler, coords.xy).rrr;
-	float3 aperture = TextureAperture.Sample(PointSampler, coords.xy).rrr;
-	float4 original = TextureOriginal.Sample(PointSampler, coords.xy).rgba;
+	float4 color = TextureOriginal.Sample(PointSampler, coords.xy).rgba;
+	float3 adaptation = TextureAdaptation.Sample(PointSampler, 0.5).rgb;
 
-	// TODO - Put into a separate helper, like kingeric's adaptation tool
-	// Debug modes :
-	if (PARAM_DEBUG_ENABLE)
+	if (PARAM_BASE_GAMMA_TO_LINEAR_ENABLE)
 	{
-		float4 debugres;
-		if (PARAM_DEBUG_COLOR) debugres.rgb = color.rgb;
-		if (PARAM_DEBUG_BLOOM) debugres.rgb = bloom.rgb;
-		if (PARAM_DEBUG_LENS) debugres.rgb = lens.rgb;
-		if (PARAM_DEBUG_DEPTH) debugres.rgb = depth.rgb;
-		if (PARAM_DEBUG_ADAPTATION) debugres.rgb = adaptation.rgb;
-		if (PARAM_DEBUG_APERTURE) debugres.rgb = aperture.rgb;
-		if (PARAM_DEBUG_ORIGINAL) debugres.rgb = original.rgb;
-
-		if (PARAM_DEBUG_LINEAR_ENABLE) debugres.rgb = linear2srgb(debugres.rgb);
-		debugres.a = coords.x;
-		return saturate(float4(lerp(color.rgb, debugres.rgb, debugres.a), 1.0));
+		color.rgb = sRGBtosRGBl(color.rgb);
+		if (PARAM_BASE_ACESCG_ENABLE) color.rgb = sRGBltoACEScg(color.rgb);
 	}
-
-	if (PARAM_DEBUG_GRADIENT) color.rgb = float3(1.0, 1.0, 1.0) * coords.x;
-	if (PARAM_BASE_LINEAR_ENABLE) color.rgb = srgb2linear(color.rgb);
-
-	bloom.rgb = bloom.rgb - color.rgb;
-	bloom.rgb = max(bloom.rgb, 0.0);
-
-	// Mixing
-	color.rgb += bloom * ENB_BLOOM_AMOUNT;
-	color.rgb += lens * ENB_LENS_AMOUNT;
 
 	// Adaptation
 	float adapt = max3(adaptation);
@@ -414,8 +377,11 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	// AGCC
 	if (PARAM_AGCC_ENABLE) color.rgb = applyAGCC(color.rgb);
 
+	if (PARAM_ACES_ENABLE && !PARAM_ACES_FAST_ENABLE) color.rgb = applyACES(color.rgb);
+	if (PARAM_ACES_ENABLE && PARAM_ACES_FAST_ENABLE) color.rgb = applyACESApprox(color.rgb);
+
 	// Return to sRGB space
-	if (PARAM_BASE_LINEAR_ENABLE) color.rgb = linear2srgb(color.rgb);
+	if (PARAM_BASE_LINEAR_TO_GAMMA_ENABLE) color.rgb = sRGBltosRGB(color.rgb);
 
 	// Tonemapping
 	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbiteDisplayMapper(color.rgb);
@@ -507,11 +473,13 @@ technique11 DrawDebug <string UIName="D4SCO - Debug";>
 		SetPixelShader(CompileShader(ps_5_0, PS_Draw()));
 	}
 
-	PASS_DEBUG_TEST
+	PASS_SPLITSCREEN(p5, TextureOriginal)
 
-	PASS_VISUALISATION(p11, 0, TextureOriginal, false)
-	PASS_VISUALISATION(p12, 1, TextureDepth, true)
-	PASS_VISUALISATION(p13, 2, TextureAdaptation, true)
+	PASS_VISUALISATION(p11, 0, TextureColor, false, false)
+	PASS_VISUALISATION(p12, 1, TextureBloom, false, false)
+	PASS_VISUALISATION(p13, 2, TextureAdaptation, true, true)
+
+	PASS_BOXGRAPH(p21, 2, TextureAdaptation, true, true, false)
 }
 
 // Do not modify
