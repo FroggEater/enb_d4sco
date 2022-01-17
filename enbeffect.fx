@@ -43,9 +43,10 @@ float	EInteriorFactor;
 
 ////////// INCLUDES
 #include "D4SCO/ReforgedUI.fxh"
+#include "D4SCO/d4sco_colorspaces.fxh"
+#include "D4SCO/d4sco_debug.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
 #include "D4SCO/d4sco_macros.fxh"
-#include "D4SCO/d4sco_colorspaces.fxh"
 
 
 
@@ -113,23 +114,11 @@ UI_SEPARATOR_CUSTOM("Base Image Settings :")
 
 UI_SPLITTER(2)
 UI_BOOL(PARAM_BASE_GAMMA_TO_LINEAR_ENABLE, "# Use Linear Color Space ?", false)
-UI_BOOL(PARAM_BASE_ACESCG_ENABLE, "# Use ACEScg Color Space ?", false)
 UI_BOOL(PARAM_BASE_LINEAR_TO_GAMMA_ENABLE, "# Switch Back To Gamma Color Space ?", false)
+UI_WHITESPACE(2)
 UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
-UI_WHITESPACE(2)
-UI_BOOL(PARAM_ADAPTATION_EXPOSURE_ENABLE, "# Use Exposure Calculation ?", false)
-UI_BOOL(PARAM_CAMERA_AUTOMATIC_EXP_ENABLE, "# Use Automatic Exposure ?", false)
-UI_FLOAT(PARAM_CAMERA_K, "12.5 | K Constant", 0.0, 20.0, 12.5)
-UI_FLOAT(PARAM_CAMERA_Q, "0.65 | q Constant", 0.0, 1.0, 0.65)
-UI_FLOAT_FINE(PARAM_CAMERA_EXPOSURE, "0.00 | Exposure Compensation (f-stops)", -1.0, 1.0, 0.0, 0.2)
-UI_FLOAT_FINE(PARAM_CAMERA_APERTURE, "1.40 | Relative Aperture (f-stops)", 0.0, 20.0, 1.4, 0.2)
-UI_FLOAT(PARAM_CAMERA_SHUTTER, "125 | Shutter Time (s)", 1, 2000, 125)
-UI_INT(PARAM_CAMERA_SENSOR, "100 | Sensor Sensitivity (ISO)", 10, 1000, 100)
-UI_FLOAT(PARAM_ADAPTATION_MID_CUTOFF, "0.50 | Adaptation Mid Cutoff", 0.1, 0.9, 0.5)
-UI_FLOAT(PARAM_ADAPTATION_EXP_MULTIPLIER, "1.25 | Adaptation Brightening Mult.", 1.0, 5.0, 2.5)
-UI_FLOAT(PARAM_ADAPTATION_DRK_MULTIPLIER, "1.25 | Adaptation Darkening Mult.", 1.0, 5.0, 2.5)
 
 UI_WHITESPACE(3)
 
@@ -148,21 +137,6 @@ UI_FLOAT(PARAM_AGCC_FADE_WEIGHT, "1.00 | AGCC Fade Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_MIDDLE_GREY_MULTIPLIER, "1.00 | Middle Grey Multiplier", 0.0, 2.0, 1.0)
 
 UI_WHITESPACE(5)
-
-#define UI_CATEGORY Tonemap
-UI_SEPARATOR_CUSTOM("Tonemap Settings :")
-
-UI_SPLITTER(4)
-UI_BOOL(PARAM_TONEMAP_PROCESS_ENABLE, "# Use Frostbite Tonemap Processing ?", false)
-UI_FLOAT(PARAM_TONEMAP_COMPRESSION_LBOUND, "0.25 | Compression Lower Bound", 0.0, 1.0, 0.25)
-UI_FLOAT(PARAM_TONEMAP_DESAT_AMOUNT, "0.70 | Desaturation Amount", 0.0, 1.0, 0.7)
-UI_FLOAT(PARAM_TONEMAP_HS_MULTIPLIER, "0.60 | Hue-Shift Multiplier", 0.0, 1.0, 0.6)
-UI_FLOAT(PARAM_TONEMAP_SAT_MULTIPLIER, "0.30 | Saturation Multiplier", 0.0, 1.0, 0.3)
-
-UI_WHITESPACE(6)
-
-UI_BOOL(PARAM_ACES_ENABLE, "# Use ACES Tonemapping ?", false)
-UI_BOOL(PARAM_ACES_FAST_ENABLE, "# Use Faster ACES Approximation ?", false)
 
 
 
@@ -184,31 +158,6 @@ Texture2D TextureOriginal; // Color R16B16G16A16 64 bit HDR format
 // Texture2D RenderTargetR16F; // R16F 16 bit HDR format with red channel only
 // Texture2D RenderTargetR32F; // R32F 32 bit HDR format with red channel only
 // Texture2D RenderTargetRGB32F; // 32 bit HDR format without alpha
-
-
-
-////////// ADD-ONS
-// #include "D4SCO/enbeffect_AdaptTool.fxh"
-#include "D4SCO/d4sco_debug.fxh"
-
-
-
-////////// ADAPTATION & EXPOSURE
-float computeEV100()
-{
-	return log2(sq(PARAM_CAMERA_APERTURE) / PARAM_CAMERA_SHUTTER * 100.0 / PARAM_CAMERA_SENSOR);
-}
-
-float computeLuminanceEV100(float L)
-{
-	return log2(L * PARAM_CAMERA_SENSOR / (PARAM_CAMERA_K + DELTA6));
-}
-
-float computeExposureFromEV100(float EV100)
-{
-	float maxL = 78.0 / (PARAM_CAMERA_SENSOR * PARAM_CAMERA_Q) * pow(2.0, EV100);
-	return 1.0 / maxL;
-}
 
 
 
@@ -252,61 +201,6 @@ float3 applyAGCC(float3 color)
 
 
 
-////////// TONEMAPPING
-// # - Credits to DICE teams and The Sandvich Maker before my changes
-float3 applyFrostbiteDisplayMapper(float3 color)
-{
-	float3 ictcp = rgb2ictcp(color);
-
-	// Desaturation before range compression
-	float saturation = pow(smoothstep(1.0, 1.0 - PARAM_TONEMAP_DESAT_AMOUNT, ictcp.x), 1.3);
-	color.rgb = ictcp2rgb(ictcp * float3(1.0, saturation.xx));
-
-	// Luminance compression treshold, dimmer inputs are not affected
-	float treshold = PARAM_TONEMAP_COMPRESSION_LBOUND;
-
-	// Hue-preserving remapping
-	float peak = max(color.r, max(color.g, color.b));
-	float mapped = lcompress(peak, treshold);
-	float3 hpcolor = color * mapped / peak;
-
-	// Non hue-preserving remapping
-	float3 nhpcolor = lcompress(color, treshold);
-
-	// Mixing hue-preserving color with normal compressed one
-	color = lerp(nhpcolor, hpcolor, PARAM_TONEMAP_HS_MULTIPLIER);
-
-	float3 mictcp = rgb2ictcp(color);
-
-	// Smooth ramp-up of the saturation at higher brightness
-	float boost = PARAM_TONEMAP_SAT_MULTIPLIER * smoothstep(1.0, 0.5, ictcp.x);
-
-	// Re-introduce some hue from the original color, using previous boost
-	mictcp.yz = lerp(mictcp.yz, ictcp.yz * mictcp.x / max(DELTA3, ictcp.x), boost);
-
-	color = ictcp2rgb(mictcp);
-	return color;
-}
-
-
-
-////////// INPUT & OUTPUT STRUCTS
-// Input
-struct VS_INPUT_POST
-{
-	float3 pos : POSITION;
-	float2 txcoord : TEXCOORD0;
-};
-
-// Output
-struct VS_OUTPUT_POST
-{
-	float4 pos : SV_POSITION;
-	float2 txcoord0 : TEXCOORD0;
-};
-
-
-
 ////////// COMPUTE
 VS_OUTPUT_POST VS_Draw(VS_INPUT_POST IN)
 {
@@ -334,33 +228,29 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	float4 color = TextureOriginal.Sample(PointSampler, coords.xy).rgba;
 	float3 adaptation = TextureAdaptation.Sample(PointSampler, 0.5).rgb;
 
-	if (PARAM_BASE_GAMMA_TO_LINEAR_ENABLE)
-	{
-		color.rgb = sRGBtosRGBl(color.rgb);
-		if (PARAM_BASE_ACESCG_ENABLE) color.rgb = sRGBltoACEScg(color.rgb);
-	}
+	if (PARAM_BASE_GAMMA_TO_LINEAR_ENABLE) color.rgb = sRGBtosRGBl(color.rgb);
 
 	// Adaptation
-	float adapt = max3(adaptation);
-	if (adapt > 0.0)
-	{
-		if (PARAM_ADAPTATION_EXPOSURE_ENABLE)
-		{
-			float EV100 = PARAM_CAMERA_AUTOMATIC_EXP_ENABLE ?
-				computeLuminanceEV100(adapt) :
-				computeEV100();
-			float exposure = computeExposureFromEV100(EV100);
+	// float adapt = max3(adaptation);
+	// if (adapt > 0.0)
+	// {
+	// 	if (PARAM_ADAPTATION_EXPOSURE_ENABLE)
+	// 	{
+	// 		float EV100 = PARAM_CAMERA_AUTOMATIC_EXP_ENABLE ?
+	// 			computeLuminanceEV100(adapt) :
+	// 			computeEV100();
+	// 		float exposure = computeExposureFromEV100(EV100);
 
-			color.rgb *= exposure;
-		}
-		else
-		{
-			float3 lowlight = color.rgb * PARAM_ADAPTATION_EXP_MULTIPLIER;
-			float3 highlight = color.rgb / PARAM_ADAPTATION_DRK_MULTIPLIER;
-			color.rgb = lerp(lowlight, highlight, adapt);
-		}
-		// color.rgb /= ((adapt + PARAM_ADAPTATION_MID_CUTOFF) * PARAM_ADAPTATION_MULTIPLIER + DELTA6);
-	}
+	// 		color.rgb *= exposure;
+	// 	}
+	// 	else
+	// 	{
+	// 		float3 lowlight = color.rgb * PARAM_ADAPTATION_EXP_MULTIPLIER;
+	// 		float3 highlight = color.rgb / PARAM_ADAPTATION_DRK_MULTIPLIER;
+	// 		color.rgb = lerp(lowlight, highlight, adapt);
+	// 	}
+	// 	// color.rgb /= ((adapt + PARAM_ADAPTATION_MID_CUTOFF) * PARAM_ADAPTATION_MULTIPLIER + DELTA6);
+	// }
 
 	// Base adjustments
 	color.rgb *= PARAM_BASE_BRIGHTNESS;
@@ -377,14 +267,8 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	// AGCC
 	if (PARAM_AGCC_ENABLE) color.rgb = applyAGCC(color.rgb);
 
-	if (PARAM_ACES_ENABLE && !PARAM_ACES_FAST_ENABLE) color.rgb = applyACES(color.rgb);
-	if (PARAM_ACES_ENABLE && PARAM_ACES_FAST_ENABLE) color.rgb = applyACESApprox(color.rgb);
-
 	// Return to sRGB space
 	if (PARAM_BASE_LINEAR_TO_GAMMA_ENABLE) color.rgb = sRGBltosRGB(color.rgb);
-
-	// Tonemapping
-	if (PARAM_TONEMAP_PROCESS_ENABLE) color.rgb = applyFrostbiteDisplayMapper(color.rgb);
 
 	// Return
 	res = float4(saturate(color).rgb, 1.0);

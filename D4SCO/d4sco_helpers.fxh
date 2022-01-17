@@ -40,8 +40,14 @@ static const float PQ_CONST_C2 = (2413.0 / 4096.0 * 32.0);
 static const float PQ_CONST_C3 = (2392.0 / 4096.0 * 32.0);
 
 static const float DELTA9 = 1e-9;
+static const float DELTA8 = 1e-8;
+static const float DELTA7 = 1e-7;
 static const float DELTA6 = 1e-6;
+static const float DELTA5 = 1e-5;
+static const float DELTA4 = 1e-4;
 static const float DELTA3 = 1e-3;
+static const float DELTA2 = 1e-2;
+static const float DELTA1 = 1e-1;
 static const float HDR = 16384.0;
 
 static const float pst32 = 0.03125;
@@ -52,6 +58,21 @@ static const float3 P_LUM = float3(0.256, 0.67, 0.065); // Photopic luminance
 static const float3 S_LUM = float3(-0.702, 1.039, 0.433); // Stocopic luminance
 
 static const float GAMMA = 2.2;
+
+
+
+////////// STRUCTS
+struct VS_INPUT_POST
+{
+	float3 pos : POSITION;
+	float2 txcoord : TEXCOORD0;
+};
+
+struct VS_OUTPUT_POST
+{
+	float4 pos : SV_POSITION;
+	float2 txcoord0 : TEXCOORD0;
+};
 
 
 
