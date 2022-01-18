@@ -6,6 +6,12 @@
 
 
 
+////////// PRIMING
+#ifndef D4SCO_HELPERS
+#define D4SCO_HELPERS
+
+
+
 ////////// SAMPLERS
 SamplerState PointSampler
 {
@@ -293,3 +299,7 @@ float3 ictcp2rgb(float3 color)
   color = lms2xyz(color);
   return xyz2rgb(color);
 }
+
+
+
+#endif
