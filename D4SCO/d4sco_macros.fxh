@@ -6,10 +6,15 @@
 
 
 
+////////// PRIMING
+#ifndef D4SCO_MACROS
+#define D4SCO_MACROS
+
+
+
 ////////// CONCATENATORS
-#define STR(x) #x
-#define MRG(a, b) a##b
-#define CMB(a, b) a##_##b
+#define STR(X) #X
+#define MRG(A, B) A##B
 
 
 
@@ -52,3 +57,7 @@ float4 PS_Blank(float4 pos : SV_POSITION, float4 txcoord : TEXCOORD0) : SV_Targe
     SetVertexShader(CompileShader(vs_5_0, VS)); \
     SetPixelShader(CompileShader(ps_5_0, PS)); \
   }
+
+
+
+#endif

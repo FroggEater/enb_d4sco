@@ -43,12 +43,13 @@ float	EInteriorFactor;
 
 ////////// INCLUDES
 // Essentials
-#include "D4SCO/ReforgedUI.fxh"
+// #include "D4SCO/ReforgedUI.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
 #include "D4SCO/d4sco_macros.fxh"
-
-// Utilities
 #include "D4SCO/d4sco_colorspaces.fxh"
+#include "D4SCO/d4sco_aces.fxh"
+// #include "D4SCO/d4sco_debug.fxh"
+#include "D4SCO/d4sco_ui.fxh"
 #include "D4SCO/d4sco_aces.fxh"
 #include "D4SCO/d4sco_debug.fxh"
 
@@ -101,51 +102,47 @@ float4 tempInfo2;
 
 
 ////////// PARAMETERS
-#define UI_SEPARATOR_MODE COLON
-#define UI_INDENT_MODE INDENT
+UI_SEP(1)
+UI_MSG(1, "D4SCO - Effects")
+UI_MSG(2, "by B. Froment")
+UI_MSG(3, "ver. 1.0.0")
+UI_SEP(2)
 
-#define UI_CATEGORY Credits
+UI_SPC(1)
 
-UI_MESSAGE(Credits0, "D4SCO - Effects")
-UI_MESSAGE(Credits1, "by FroggEater")
-UI_MESSAGE(Credits2, "ver. 1.0")
-UI_SPLITTER(1)
+UI_CAT(1, "Base Settings")
+UI_SPL(1)
+UI_BOOL(PARAM_BASE_GAMMA_TO_LINEAR_ENABLE, "Use Linear Color Space", false)
+UI_BOOL(PARAM_BASE_LINEAR_TO_GAMMA_ENABLE, "Switch Back To Gamma Color Space", false)
 
-UI_WHITESPACE(1)
+UI_SPC(2)
 
-#define UI_CATEGORY Base
-UI_SEPARATOR_CUSTOM("Base Image Settings :")
+UI_BOOL(PARAM_PREPASS_AP1_ENABLE, "Colorspace switched in prepass", false)
+UI_BOOL(PARAM_BASE_LINEAR_TO_ACES_ENABLE, "Use ACES2065-1 Color Space", false)
+UI_BOOL(PARAM_BASE_ACES_TO_LINEAR_ENABLE, "Switch Back To Linear Color Space", false)
+UI_BOOL(PARAM_BASE_MODIFIED_ACES_ENABLE, "Use AP1 instead of AP0", false)
 
-UI_SPLITTER(2)
-UI_BOOL(PARAM_BASE_GAMMA_TO_LINEAR_ENABLE, "# Use Linear Color Space ?", false)
-UI_BOOL(PARAM_BASE_LINEAR_TO_GAMMA_ENABLE, "# Switch Back To Gamma Color Space ?", false)
-UI_WHITESPACE(2)
-UI_BOOL(PARAM_PREPASS_AP1_ENABLE, "# Colorspace switched in prepass ?", false)
-UI_BOOL(PARAM_BASE_LINEAR_TO_ACES_ENABLE, "# Use ACES2065-1 Color Space ?", false)
-UI_BOOL(PARAM_BASE_ACES_TO_LINEAR_ENABLE, "# Switch Back To Linear Color Space ?", false)
-UI_BOOL(PARAM_BASE_MODIFIED_ACES_ENABLE, "# Use AP1 instead of AP0 ?", false)
-UI_WHITESPACE(3)
-UI_FLOAT(PARAM_BASE_BRIGHTNESS, "1.00 | Brightness", 0.0, 2.0, 1.0)
-UI_FLOAT(PARAM_BASE_CONTRAST, "1.00 | Contrast", 0.0, 2.0, 1.0)
-UI_FLOAT(PARAM_BASE_SATURATION, "1.00 | Saturation", 0.0, 2.0, 1.0)
+UI_SPC(3)
 
-UI_WHITESPACE(4)
+UI_FLOAT(PARAM_BASE_BRIGHTNESS, "Brightness", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_CONTRAST, "Contrast", 0.0, 2.0, 1.0)
+UI_FLOAT(PARAM_BASE_SATURATION, "Saturation", 0.0, 2.0, 1.0)
 
-#define UI_CATEGORY AGCC
-UI_SEPARATOR_CUSTOM("AGCC Settings :")
+UI_SPC(4)
 
-UI_SPLITTER(3)
-UI_BOOL(PARAM_AGCC_ENABLE, "# Use AGCC ?", false)
-UI_BOOL(PARAM_AGCC_LIGHTNESS_ENABLE, "# Use Perceptual Lightness ?", false)
-UI_FLOAT(PARAM_AGCC_BRIGHTNESS_WEIGHT, "1.00 | AGCC Exposure Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_CONTRAST_WEIGHT, "1.00 | AGCC Contrast Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_SATURATION_WEIGHT, "1.00 | AGCC Saturation Weight", 0.0, 1.0, 1.0)
-UI_WHITESPACE(5)
-UI_FLOAT(PARAM_AGCC_TINT_WEIGHT, "1.00 | AGCC Tint Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_FADE_WEIGHT, "1.00 | AGCC Fade Weight", 0.0, 1.0, 1.0)
-UI_FLOAT(PARAM_AGCC_MIDDLE_GREY_MULTIPLIER, "1.00 | Middle Grey Multiplier", 0.0, 2.0, 1.0)
+UI_CAT(2, "AGCC Settings")
+UI_SPL(2)
+UI_BOOL(PARAM_AGCC_ENABLE, "Use AGCC", false)
+UI_BOOL(PARAM_AGCC_LIGHTNESS_ENABLE, "Use Perceptual Lightness", false)
 
-UI_WHITESPACE(6)
+UI_SPC(5)
+
+UI_FLOAT(PARAM_AGCC_BRIGHTNESS_WEIGHT, "AGCC Exposure Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_CONTRAST_WEIGHT, "AGCC Contrast Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_SATURATION_WEIGHT, "AGCC Saturation Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_TINT_WEIGHT, "AGCC Tint Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_FADE_WEIGHT, "AGCC Fade Weight", 0.0, 1.0, 1.0)
+UI_FLOAT(PARAM_AGCC_MIDDLE_GREY_MULTIPLIER, "Middle Grey Multiplier", 0.0, 2.0, 1.0)
 
 
 
@@ -381,23 +378,6 @@ technique11 Draw <string UIName="D4SCO - Effects";>
 		SetVertexShader(CompileShader(vs_5_0, VS_Draw()));
 		SetPixelShader(CompileShader(ps_5_0, PS_Draw()));
 	}
-}
-
-technique11 DrawDebug <string UIName="D4SCO - Debug";>
-{
-	pass p0
-	{
-		SetVertexShader(CompileShader(vs_5_0, VS_Draw()));
-		SetPixelShader(CompileShader(ps_5_0, PS_Draw()));
-	}
-
-	PASS_SPLITSCREEN(p5, TextureOriginal)
-
-	PASS_VISUALISATION(p11, 0, TextureColor, false, false)
-	PASS_VISUALISATION(p12, 1, TextureBloom, false, false)
-	PASS_VISUALISATION(p13, 2, TextureAdaptation, true, true)
-
-	PASS_BOXGRAPH(p21, 2, TextureAdaptation, true, true, false)
 }
 
 // Do not modify
