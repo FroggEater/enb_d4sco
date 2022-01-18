@@ -120,6 +120,7 @@ UI_SPLITTER(2)
 UI_BOOL(PARAM_BASE_GAMMA_TO_LINEAR_ENABLE, "# Use Linear Color Space ?", false)
 UI_BOOL(PARAM_BASE_LINEAR_TO_GAMMA_ENABLE, "# Switch Back To Gamma Color Space ?", false)
 UI_WHITESPACE(2)
+UI_BOOL(PARAM_PREPASS_AP1_ENABLE, "# Colorspace switched in prepass ?", false)
 UI_BOOL(PARAM_BASE_LINEAR_TO_ACES_ENABLE, "# Use ACES2065-1 Color Space ?", false)
 UI_BOOL(PARAM_BASE_ACES_TO_LINEAR_ENABLE, "# Switch Back To Linear Color Space ?", false)
 UI_BOOL(PARAM_BASE_MODIFIED_ACES_ENABLE, "# Use AP1 instead of AP0 ?", false)
@@ -236,7 +237,7 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	float4 color = TextureOriginal.Sample(PointSampler, coords.xy).rgba;
 	float3 adaptation = TextureAdaptation.Sample(PointSampler, 0.5).rgb;
 
-	if (PARAM_BASE_GAMMA_TO_LINEAR_ENABLE) 
+	if (PARAM_BASE_GAMMA_TO_LINEAR_ENABLE && !PARAM_PREPASS_AP1_ENABLE) 
 	{
 		color.rgb = sRGBtosRGBl(color.rgb);
 
@@ -287,14 +288,21 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	if (
 		PARAM_BASE_LINEAR_TO_ACES_ENABLE &&
 		PARAM_BASE_ACES_TO_LINEAR_ENABLE &&
-		PARAM_BASE_GAMMA_TO_LINEAR_ENABLE
+		PARAM_BASE_GAMMA_TO_LINEAR_ENABLE &&
+		!PARAM_PREPASS_AP1_ENABLE
 	) {
 		if (PARAM_BASE_MODIFIED_ACES_ENABLE) color.rgb = applyACESMapping(color.rgb, true);
 		else color.rgb = applyACESMapping(color.rgb);
 	}
 
 	// Return to sRGB space
-	if (PARAM_BASE_LINEAR_TO_GAMMA_ENABLE) color.rgb = sRGBltosRGB(color.rgb);
+	if (PARAM_BASE_LINEAR_TO_GAMMA_ENABLE && !PARAM_PREPASS_AP1_ENABLE) color.rgb = sRGBltosRGB(color.rgb);
+
+	if (PARAM_PREPASS_AP1_ENABLE) 
+	{
+		color.rgb = applyACESMapping(color.rgb, true);
+		color.rgb = sRGBltosRGB(color.rgb);
+	}
 
 	// Return
 	res = float4(saturate(color).rgb, 1.0);
