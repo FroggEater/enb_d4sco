@@ -47,8 +47,11 @@ float	EInteriorFactor;
 #include "D4SCO/d4sco_helpers.fxh"
 #include "D4SCO/d4sco_macros.fxh"
 #include "D4SCO/d4sco_colorspaces.fxh"
+#include "D4SCO/d4sco_aces.fxh"
 // #include "D4SCO/d4sco_debug.fxh"
 #include "D4SCO/d4sco_ui.fxh"
+#include "D4SCO/d4sco_aces.fxh"
+#include "D4SCO/d4sco_debug.fxh"
 
 
 
@@ -114,22 +117,29 @@ UI_BOOL(PARAM_BASE_LINEAR_TO_GAMMA_ENABLE, "Switch Back To Gamma Color Space", f
 
 UI_SPC(2)
 
+UI_BOOL(PARAM_PREPASS_AP1_ENABLE, "Colorspace switched in prepass", false)
+UI_BOOL(PARAM_BASE_LINEAR_TO_ACES_ENABLE, "Use ACES2065-1 Color Space", false)
+UI_BOOL(PARAM_BASE_ACES_TO_LINEAR_ENABLE, "Switch Back To Linear Color Space", false)
+UI_BOOL(PARAM_BASE_MODIFIED_ACES_ENABLE, "Use AP1 instead of AP0", false)
+
+UI_SPC(3)
+
 UI_FLOAT(PARAM_BASE_BRIGHTNESS, "Brightness", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_CONTRAST, "Contrast", 0.0, 2.0, 1.0)
 UI_FLOAT(PARAM_BASE_SATURATION, "Saturation", 0.0, 2.0, 1.0)
 
-UI_SPC(3)
+UI_SPC(4)
 
 UI_CAT(2, "AGCC Settings")
 UI_SPL(2)
 UI_BOOL(PARAM_AGCC_ENABLE, "Use AGCC", false)
 UI_BOOL(PARAM_AGCC_LIGHTNESS_ENABLE, "Use Perceptual Lightness", false)
+
+UI_SPC(5)
+
 UI_FLOAT(PARAM_AGCC_BRIGHTNESS_WEIGHT, "AGCC Exposure Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_CONTRAST_WEIGHT, "AGCC Contrast Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_SATURATION_WEIGHT, "AGCC Saturation Weight", 0.0, 1.0, 1.0)
-
-UI_SPC(4)
-
 UI_FLOAT(PARAM_AGCC_TINT_WEIGHT, "AGCC Tint Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_FADE_WEIGHT, "AGCC Fade Weight", 0.0, 1.0, 1.0)
 UI_FLOAT(PARAM_AGCC_MIDDLE_GREY_MULTIPLIER, "Middle Grey Multiplier", 0.0, 2.0, 1.0)
@@ -224,7 +234,16 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	float4 color = TextureOriginal.Sample(PointSampler, coords.xy).rgba;
 	float3 adaptation = TextureAdaptation.Sample(PointSampler, 0.5).rgb;
 
-	if (PARAM_BASE_GAMMA_TO_LINEAR_ENABLE) color.rgb = sRGBtosRGBl(color.rgb);
+	if (PARAM_BASE_GAMMA_TO_LINEAR_ENABLE && !PARAM_PREPASS_AP1_ENABLE) 
+	{
+		color.rgb = sRGBtosRGBl(color.rgb);
+
+		if (PARAM_BASE_LINEAR_TO_ACES_ENABLE)
+		{
+			if (PARAM_BASE_MODIFIED_ACES_ENABLE) color.rgb = sRGBltoAP1(color.rgb);
+			else color.rgb = sRGBltoAP0(color.rgb);
+		}
+	}
 
 	// Adaptation
 	// float adapt = max3(adaptation);
@@ -263,8 +282,24 @@ float4 PS_Draw(VS_OUTPUT_POST IN, float4 v0 : SV_Position0) : SV_Target
 	// AGCC
 	if (PARAM_AGCC_ENABLE) color.rgb = applyAGCC(color.rgb);
 
+	if (
+		PARAM_BASE_LINEAR_TO_ACES_ENABLE &&
+		PARAM_BASE_ACES_TO_LINEAR_ENABLE &&
+		PARAM_BASE_GAMMA_TO_LINEAR_ENABLE &&
+		!PARAM_PREPASS_AP1_ENABLE
+	) {
+		if (PARAM_BASE_MODIFIED_ACES_ENABLE) color.rgb = applyACESMapping(color.rgb, true);
+		else color.rgb = applyACESMapping(color.rgb);
+	}
+
 	// Return to sRGB space
-	if (PARAM_BASE_LINEAR_TO_GAMMA_ENABLE) color.rgb = sRGBltosRGB(color.rgb);
+	if (PARAM_BASE_LINEAR_TO_GAMMA_ENABLE && !PARAM_PREPASS_AP1_ENABLE) color.rgb = sRGBltosRGB(color.rgb);
+
+	if (PARAM_PREPASS_AP1_ENABLE) 
+	{
+		color.rgb = applyACESMapping(color.rgb, true);
+		color.rgb = sRGBltosRGB(color.rgb);
+	}
 
 	// Return
 	res = float4(saturate(color).rgb, 1.0);
