@@ -3,3 +3,5 @@
 @Examples - ENBSeries/*
 @Examples - Reshade/*
 @Examples - Random/*
+.vscode/*
+.vscode/settings.json
