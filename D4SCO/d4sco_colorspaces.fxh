@@ -18,7 +18,7 @@
 
 
 ////////// NON-LINEAR TO LINEAR
-// sRGB (non-linear) <> sRGBl (linear) | D65 | Rec. 709 primaries
+// sRGB (non-linear) <> sRGBl (linear) | Rec. 709 | D65
 float3 sRGBtosRGBl(float3 color)
 {
   static const float a = 0.055;
@@ -44,7 +44,7 @@ float3 sRGBltosRGB(float3 color)
 
 
 ////////// XYZ SPECIFIC
-// XYZ <> xyY | D60 (maybe)
+// XYZ <> xyY
 float3 XYZtoxyY(float3 color)
 {
   float divider = max(dot(color, float3(1.0, 1.0, 1.0).xxx), DELTA4);
@@ -59,7 +59,7 @@ float3 xyYtoXYZ(float3 color)
   return res;
 }
 
-// XYZ <> sRGB | > Rec. 709 primaries
+// XYZ <> sRGBl | XYZ <> Rec. 709
 float3 XYZtosRGBl(float3 color)
 {
   static const float3x3 mat = float3x3(
@@ -70,10 +70,20 @@ float3 XYZtosRGBl(float3 color)
   return mul(mat, color);
 }
 
+float3 sRGBltoXYZ(float3 color)
+{
+  static const float3x3 mat = float3x3(
+    0.4124564, 0.3575761, 0.1804375,
+    0.2126729, 0.7151522, 0.0721750,
+    0.0193339, 0.1191920, 0.9503041
+  );
+  return mul(mat, color);
+}
+
 
 
 ////////// ACES SPECIFIC
-// sRGBl <> ACES2065-1 | Rec. 709 <> AP0 primaries
+// sRGBl <> ACES2065-1 | Rec. 709 <> AP0
 float3 sRGBltoAP0(float3 color)
 {
   static const float3x3 mat = float3x3(
@@ -94,7 +104,7 @@ float3 AP0tosRGBl(float3 color)
   return mul(mat, color);
 }
 
-// sRGBl <> ACEScg | Rec. 709 <> AP1 primaries
+// sRGBl <> ACEScg | Rec. 709 <> AP1
 float3 sRGBltoAP1(float3 color)
 {
   static const float3x3 mat = float3x3(
@@ -115,7 +125,7 @@ float3 AP1tosRGBl(float3 color)
   return mul(mat, color);
 }
 
-// XYZ <> ACES2065-1 | XYZ <> AP0 primaries
+// XYZ <> ACES2065-1 | XYZ <> AP0 | D60
 float3 XYZtoAP0(float3 color)
 {
   static const float3x3 mat = float3x3(
@@ -136,7 +146,7 @@ float3 AP0toXYZ(float3 color)
   return mul(mat, color);
 }
 
-// XYZ <> ACEScg | XYZ <> AP1 primaries
+// XYZ <> ACEScg | XYZ <> AP1 | D60
 float3 XYZtoAP1(float3 color)
 {
   static const float3x3 mat = float3x3(
@@ -157,7 +167,7 @@ float3 AP1toXYZ(float3 color)
   return mul(mat, color);
 }
 
-// ACES2065-1 <> ACEScg | AP0 <> AP1 primaries
+// ACES2065-1 <> ACEScg | AP0 <> AP1 | D60
 float3 AP0toAP1(float3 color)
 {
   static const float3x3 mat = float3x3(
@@ -181,13 +191,23 @@ float3 AP1toAP0(float3 color)
 
 
 ////////// WHITE POINT CHANGES
-// XYZ D60 <> XYZ D65
+// XYZ D60 <> XYZ D65 | Bradford
 float3 D60toD65(float3 color)
 {
   static const float3x3 mat = float3x3(
     0.98722400, -0.00611327, 0.0159533,
     -0.00759836, 1.00186000, 0.0053302,
     0.00307257, -0.00509595, 1.0816800
+  );
+  return mul(mat, color);
+}
+
+float3 D65toD60(float3 color)
+{
+  static const float3x3 mat = float3x3(
+    1.01303000, 0.00610531, -0.01497100,
+    0.00769823, 0.99816500, -0.00503203,
+    -0.00284131, 0.00468516, 0.92450700
   );
   return mul(mat, color);
 }
