@@ -6,6 +6,12 @@
 
 
 
+////////// PRIMING
+#ifndef D4SCO_HELPERS
+#define D4SCO_HELPERS
+
+
+
 ////////// SAMPLERS
 SamplerState PointSampler
 {
@@ -30,6 +36,9 @@ static const float rPI = 1.0 / PI;
 static const float NAN = 0.0 / 0.0;
 static const float POSINF = 1.0 / 0.0;
 static const float NEGINF = -1.0 / 0.0;
+
+static const float HALF_MIN = 6.10352e-5;
+static const float HALF_MAX = 65504.0;
 
 static const float PQ_CONST_N = (2610.0 / 4096.0 / 4.0);
 static const float PQ_CONST_M = (2523.0 / 4096.0 * 128.0);
@@ -293,3 +302,7 @@ float3 ictcp2rgb(float3 color)
   color = lms2xyz(color);
   return xyz2rgb(color);
 }
+
+
+
+#endif
