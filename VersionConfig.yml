@@ -1,9 +1,10 @@
 mode: ContinuousDeployment
 continuous-delivery-fallback-tag: ''
-major-version-bump-message: '(fix|feat)!:'
-minor-version-bump-message: '(feat|perf|refactor):'
-patch-version-bump-message: 'fix:'
-no-bump-message: '(ci|git|chore|style|merge):'
+major-version-bump-message: '(fix|feat)!:.*'
+minor-version-bump-message: '(feat|perf|refactor):.*'
+patch-version-bump-message: 'fix:.*'
+no-bump-message: '(ci|git|chore|style|merge)?:?.*'
+commit-message-incrementing: Enabled
 #branches:
 #  master:
 #    regex: ^master$|^main$
