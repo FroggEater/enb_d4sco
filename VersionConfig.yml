@@ -5,6 +5,7 @@ patch-version-bump-message: 'fix:'
 no-bump-message: '(ci|git|chore|style|merge):'
 branches:
   master:
+    regex: ^master$|^main$
     mode: ContinuousDelivery
     tag: ''
     increment: Inherit
@@ -16,8 +17,9 @@ branches:
     is-mainline: true
     pre-release-weight: 55000
   dev:
+    regex: ^dev(elop)?(ment)?$
     mode: ContinuousDeployment
-    tag: useBranchName
+    tag: dev
     increment: Inherit
     prevent-increment-of-merged-branch-version: false
     track-merge-target: true
