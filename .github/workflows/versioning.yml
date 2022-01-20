@@ -86,7 +86,7 @@ jobs:
     name: Update Changelog
     runs-on: ubuntu-latest
     needs: update-version
-    if: contains(needs.update-version.outputs.branch, "master")
+    if: contains(needs.update-version.outputs.branch, 'master')
     steps:
       - run: |
           echo "Creating release notes for ${{ needs.calculate-version.outputs.branch }} branch."
