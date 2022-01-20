@@ -3,4 +3,6 @@
 @Examples - ENBSeries/*
 @Examples - Reshade/*
 @Examples - Random/*
-.vscode/*
+.vscode/**
+.github/**
+VersionConfig.yml
