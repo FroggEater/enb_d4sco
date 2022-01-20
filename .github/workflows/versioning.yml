@@ -33,7 +33,7 @@ jobs:
         with:
           versionSpec: "5.x"
           
-      - id: getversion
+      - id: gitversion
         uses: gittools/actions/gitversion/execute@v0.9.11
         
       - run: |
@@ -78,7 +78,7 @@ jobs:
       - uses: jacobtomlinson/gha-find-replace@v2
         with:
           find: "([0-9]\\.)([0-9]\\.)([0-9])(-dev)*"
-          replace: ${{ needs.update-version.outputs.semver }}
+          replace: "${{ needs.update-version.outputs.semver }}"
           include: "D4SCO/*.fxh, *.fx"
           regex: true
   
