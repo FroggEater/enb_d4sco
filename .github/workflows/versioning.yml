@@ -84,7 +84,7 @@ jobs:
 
       - uses: jacobtomlinson/gha-find-replace@v2
         with:
-          find: "([0-9]\.)([0-9]\.)([0-9])"
+          find: "[0-9]+[.][0-9]+[.][0-9]+"
           replace: ${{ needs.update-version.outputs.semver }}
           include: "D4SCO/**.fxh, *.fx"
           regex: true
