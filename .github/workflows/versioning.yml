@@ -89,4 +89,4 @@ jobs:
     if: contains(needs.update-version.outputs.branch, 'master')
     steps:
       - run: |
-          echo "Creating release notes for ${{ needs.calculate-version.outputs.branch }} branch."
+          echo "Creating release notes for ${{ needs.update-version.outputs.branch }} branch."
