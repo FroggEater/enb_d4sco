@@ -1,3 +1,4 @@
+next-version: 0.0.0
 mode: ContinuousDeployment
 continuous-delivery-fallback-tag: ''
 major-version-bump-message: '(fix|feat)!:.*'
