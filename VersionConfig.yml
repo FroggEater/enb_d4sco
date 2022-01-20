@@ -1,0 +1,33 @@
+next-version: 0.0.0
+mode: ContinuousDeployment
+continuous-delivery-fallback-tag: ''
+major-version-bump-message: '(fix|feat)!:.*'
+minor-version-bump-message: '(feat|perf|refactor):.*'
+patch-version-bump-message: 'fix:.*'
+no-bump-message: '(ci|git|chore|style|merge)?:?.*'
+commit-message-incrementing: Enabled
+#branches:
+#  master:
+#    regex: ^master$|^main$
+#    mode: ContinuousDelivery
+#    tag: ''
+#    increment: Inherit
+#    prevent-increment-of-merged-branch-version: true
+#    track-merge-target: false
+#    source-branches: [ 'dev' ]
+#    tracks-release-branches: false
+#    is-release-branch: true
+#    is-mainline: true
+#    pre-release-weight: 55000
+#  dev:
+#    regex: ^dev(elop)?(ment)?$
+#    mode: ContinuousDeployment
+#    tag: dev
+#    increment: Inherit
+#    prevent-increment-of-merged-branch-version: false
+#    track-merge-target: true
+#    source-branches: []
+#    tracks-release-branches: true
+#    is-release-branch: false
+#    is-mainline: false
+#    pre-release-weight: 0

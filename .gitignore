@@ -3,4 +3,11 @@
 @Examples - ENBSeries/*
 @Examples - Reshade/*
 @Examples - Random/*
-.vscode/*
+Reforged/**
+Include/**
+ColorLab/**
+.vscode/**
+.github/**
+VersionConfig.yml
+CODE_OF_CONDUCT.md
+LICENSE
