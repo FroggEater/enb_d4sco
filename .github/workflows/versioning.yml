@@ -86,7 +86,7 @@ jobs:
         with:
           find: "([0-9]\\.)([0-9]\\.)([0-9])(-dev)?"
           replace: ${{ needs.update-version.outputs.semver }}
-          include: "[D4SCO/*.fxh, *.fx]"
+          include: "D4SCO/**.fxh, *.fx"
           regex: true
         
       - uses: ad-m/github-push-action@v0.6.0
