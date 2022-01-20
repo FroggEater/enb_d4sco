@@ -1,8 +1,14 @@
-////////// D4SCO Debug - 1.0
+////////// D4SCO Debug - 0.0.0
 ////////// by FroggEater
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates
 ////////// > visit the Nexus for D4SCO updates
+
+
+
+////////// PRIMERS
+#ifndef D4SCO_DEBUG
+#define D4SCO_DEBUG
 
 
 
@@ -166,10 +172,13 @@ float4 PS_SplitScreen(
 
 ////////// PASSES
 // #define PASS_DEBUG_TEST PASS(p10, VS_TestTool(), PS_TestTool())
-
 #define PASS_SPLITSCREEN(NAME, TEXTURE) \
   PASS(NAME, VS_Basic(), PS_SplitScreen(TEXTURE))
 #define PASS_VISUALISATION(NAME, ORDER, TEXTURE, SCHANNEL, LINEAR) \
   PASS(NAME, VS_SubRender(0, ORDER), PS_Visualisation(TEXTURE, SCHANNEL, LINEAR))
 #define PASS_BOXGRAPH(NAME, ORDER, TEXTURE, SCHANNEL, LINEAR, HORIZONTAL) \
   PASS(NAME, VS_SubRender(1, ORDER), PS_BoxGraph(TEXTURE, SCHANNEL, LINEAR, HORIZONTAL))
+
+
+
+#endif

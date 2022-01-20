@@ -1,4 +1,4 @@
-////////// D4SCO Colorspaces - 1.0
+////////// D4SCO Colorspaces - 0.0.0
 ////////// by FroggEater
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates
@@ -9,6 +9,12 @@
 // be done at the end for a gamma corrected output. All RGB space to RGB space conversions
 // use the Bradford CAT, and have been computed using Color Dash :
 // https://www.colour-science.org/apps/
+
+
+
+///////// PRIMERS
+#ifndef D4SCO_COLORSPACES
+#define D4SCO_COLORSPACES
 
 
 
@@ -211,3 +217,7 @@ float3 D65toD60(float3 color)
   );
   return mul(mat, color);
 }
+
+
+
+#endif

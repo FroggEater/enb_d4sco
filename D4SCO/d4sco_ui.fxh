@@ -1,4 +1,4 @@
-////////// D4SCO UI - 1.0
+////////// D4SCO UI - 0.0.0
 ////////// by FroggEater
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates
@@ -6,14 +6,9 @@
 
 
 
-////////// PRIMING
+////////// PRIMERS
 #ifndef D4SCO_UI
 #define D4SCO_UI
-
-
-
-////////// INCLUDES
-#include "d4sco_macros.fxh"
 
 
 

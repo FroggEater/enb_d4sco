@@ -1,4 +1,4 @@
-////////// D4SCO ACES - 1.0
+////////// D4SCO ACES - 0.0.0
 ////////// by FroggEater
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates
@@ -6,9 +6,14 @@
 
 
 
+////////// PRIMERS
+#ifndef D4SCO_ACES
+#define D4SCO_ACES
+
+
+
 ////////// INCLUDES
 #include "d4sco_helpers.fxh"
-
 #include "d4sco_colorspaces.fxh"
 
 
@@ -514,3 +519,7 @@ float3 applyACESMapping(float3 color, bool modified = false)
   }
   return odtColor;
 }
+
+
+
+#endif

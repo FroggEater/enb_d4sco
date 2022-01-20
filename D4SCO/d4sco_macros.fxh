@@ -1,4 +1,4 @@
-////////// D4SCO Macros - 1.0
+////////// D4SCO Macros - 0.0.0
 ////////// by FroggEater
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates

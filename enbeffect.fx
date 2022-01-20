@@ -1,4 +1,4 @@
-////////// D4SCO Effects - 1.0
+////////// D4SCO Effects - 0.0.0
 ////////// by FroggEater
 //////////
 ////////// > visit http://enbdev.com for ENBSeries updates
@@ -46,11 +46,10 @@ float	EInteriorFactor;
 // #include "D4SCO/ReforgedUI.fxh"
 #include "D4SCO/d4sco_helpers.fxh"
 #include "D4SCO/d4sco_macros.fxh"
+#include "D4SCO/d4sco_debug.fxh"
+#include "D4SCO/d4sco_ui.fxh"
 #include "D4SCO/d4sco_colorspaces.fxh"
 #include "D4SCO/d4sco_aces.fxh"
-// #include "D4SCO/d4sco_debug.fxh"
-#include "D4SCO/d4sco_ui.fxh"
-#include "D4SCO/d4sco_debug.fxh"
 
 
 
