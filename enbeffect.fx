@@ -50,7 +50,6 @@ float	EInteriorFactor;
 #include "D4SCO/d4sco_aces.fxh"
 // #include "D4SCO/d4sco_debug.fxh"
 #include "D4SCO/d4sco_ui.fxh"
-#include "D4SCO/d4sco_aces.fxh"
 #include "D4SCO/d4sco_debug.fxh"
 
 

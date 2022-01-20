@@ -9,20 +9,16 @@
 ////////// INCLUDES
 #include "d4sco_helpers.fxh"
 #include "d4sco_macros.fxh"
-#include "ReforgedUI.fxh"
+#include "d4sco_ui.fxh"
 
 
 
 ////////// PARAMETERS
-#define UI_SEPARATOR_MODE COLON
-#define UI_INDENT_MODE INDENT
+UI_SPC(50)
 
-UI_WHITESPACE(50)
+UI_CAT(50, "Test Tool Settings")
 
-#define UI_CATEGORY Testing
-UI_SEPARATOR_CUSTOM("Test Tool Settings")
-
-UI_SPLITTER(51)
+UI_SPL(51)
 
 // UI_BOOL(bEnableTestTool, "# Show Testing Tool ?", false)
 // UI_FLOAT(fPosX, "pos.x Divider", 1.0, 20.0, 1.0)
@@ -40,14 +36,14 @@ UI_SPLITTER(51)
 UI_BOOL(bEnableSplitScreen, "# Show Splitscreen ?", false)
 UI_BOOL(bEnableVisualisation, "# Show Inbound Textures ?", false)
 UI_BOOL(bEnableCharts, "# Show Charts ?", false)
-UI_WHITESPACE(53)
+UI_SPC(53)
 UI_BOOL(bUseHorizontalSplit, "# Use Horizontal Split ?", false)
 UI_FLOAT(fSplitScreenDivide, "Split Screen Divide", 0.0, 1.0, 0.5)
-UI_WHITESPACE(54)
+UI_SPC(54)
 UI_BOOL(bEnableGammaCorrection, "# Use Gamma Correction ?", false)
 UI_FLOAT(fSubWindowsScale, "Visualisation Scale", 1.0, 5.0, 1.0)
 UI_FLOAT(fSubWindowsScroll, "Visualisation Scroll", 0.0, 10.0, 0.0)
-UI_WHITESPACE(55)
+UI_SPC(55)
 UI_FLOAT(fLineWidth, "Graph Line Width", 1.0, 5.0, 2.5)
 
 
